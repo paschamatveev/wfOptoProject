@@ -19,7 +19,7 @@ class wfData:
         self.frameTimes = np.squeeze(np.load(self.timeFile))[::2]
         self.svdTemp = np.load(serverPath / 'corr/svdTemporalComponents_corr.npy')
         self.svdSpatRaw = np.load(serverPath / 'blue/svdSpatialComponents.npy')
-        self.svdSpat500 = self.svdSpatRaw[:,:,:500]
+        self.svdSpatModify = self.svdSpatRaw[:,:,:500]
         self.meanImage = np.load(serverPath / 'blue/meanImage.npy')
         self.stimOnTimes = np.squeeze(np.load(pathStim / 'linTestOnTimes.npy'))
         self.stimContrasts = np.squeeze(np.load(pathStim / 'linTestContrasts.npy'))
@@ -32,6 +32,11 @@ class wfData:
         return self.contrasts
     def getDurations():
         return self.durations
+    def modifyCountComponents(self, start, stop):
+        '''
+        modifies how many components are used in visualizations
+        '''
+        self.svdSpatModify = self.SpatRaw(:,:,start:stop)
     def trial_timeFunc(self, start, end, step, oneTime=False, loc=-1):
         '''
         creates trial timings for a specified start before time, an end after the time, with a 'step' count of

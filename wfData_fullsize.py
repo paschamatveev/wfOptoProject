@@ -18,25 +18,40 @@ class wfData:
         self.timeFile = serverPath / 'cameraFrameTimes.npy'
         self.frameTimes = np.squeeze(np.load(self.timeFile))[::2]
         self.svdTemp = np.load(serverPath / 'corr/svdTemporalComponents_corr.npy')
-        self.svdSpatRaw = np.load(serverPath / 'blue/svdSpatialComponents.npy')
-        self.svdSpatModify = self.svdSpatRaw[:,:,:500]
+        self.svdSpat = np.load(serverPath / 'blue/svdSpatialComponents.npy')
+        self.svdSpatModify = self.svdSpat[:,:,:500]
         self.meanImage = np.load(serverPath / 'blue/meanImage.npy')
         self.stimOnTimes = np.squeeze(np.load(pathStim / 'linTestOnTimes.npy'))
         self.stimContrasts = np.squeeze(np.load(pathStim / 'linTestContrasts.npy'))
         self.stimDurations = np.squeeze(np.load(pathStim / 'linTestDurations.npy'))
         self.getTempComp = scipy.interpolate.interp1d(self.frameTimes, self.svdTemp, axis=0)
-        self.spatial = (self.svdSpat500).reshape(560*560, -1)
+        self.spatial = (self.svdSpatModify).reshape(560*560, -1)
         self.contrasts = np.unique(self.stimContrasts)
         self.durations = np.unique(self.stimDurations)
     def getContrasts():
         return self.contrasts
     def getDurations():
         return self.durations
-    def modifyCountComponents(self, start, stop):
+    def modifyCountComponents(self, start=0, stop=500):
         '''
         modifies how many components are used in visualizations
         '''
-        self.svdSpatModify = self.SpatRaw(:,:,start:stop)
+        self.svdTempModify = self.svdTemp[:,start:stop]
+        self.getTempComp = scipy.interpolate.interp1d(self.frameTimes, self.svdTempModify, axis=0)
+        self.svdSpatModify = self.svdSpat[:,:,start:stop]
+        self.spatial = (self.svdSpatModify).reshape(560*560, -1)
+    def quickCreateVideo(self):
+        '''
+        creates video which can be used for plotting in one function 
+        don't have to run all trial_timeFunc, trial_activityFunc, or createVideo separately
+        assumes not oneTime, and has defualts of .1 and .6 for the trial times
+        '''
+        self.trial_time = [np.linspace(i-.1, i+.6, 100) for i in self.stimOnTimes]
+        self.trial_time = np.array(self.trial_time)
+        self.trial_activity = self.getTempCompFunc(self.trial_time)
+        self.trial_activity = np.mean(self.trial_activity, axis=0)
+        self.video = self.spatial @ self.trial_activity.T
+        self.video = (self.video).reshape(560,560,-1)
     def trial_timeFunc(self, start, end, step, oneTime=False, loc=-1):
         '''
         creates trial timings for a specified start before time, an end after the time, with a 'step' count of
@@ -51,7 +66,7 @@ class wfData:
             self.trial_time = np.linspace(startTime, endTime, step)
             self.trial_time = np.array(self.trial_time)
         else:
-            self.trial_time = [np.linspace(i-0.1, i+0.4, 100) for i in self.stimOnTimes]
+            self.trial_time = [np.linspace(i-0.1, i+0.6, 100) for i in self.stimOnTimes]
             self.trial_time = np.array(self.trial_time)
         return self.trial_time
     def getTempCompFunc(self, trial_time_input):

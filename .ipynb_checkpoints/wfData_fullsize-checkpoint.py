@@ -103,8 +103,8 @@ class wfData:
         if avg==True:
             f = plt.figure(figsize=(cols*figsizeCol, rows*figsizeRow))
             avg_trial_activity = np.mean(self.trial_activity, axis=1)
-            self.video = np.mean(self.video, axis=2)
-            plt.imshow(self.video[:, :], clim = np.percentile(self.video, (2, 99.9)))
+            self.video_mean = np.mean(self.video, axis=2)
+            plt.imshow(self.video_mean[:, :], clim = np.percentile(self.video_mean, (2, 99.9)))
             plt.colorbar()
         else:
             f = plt.figure(figsize=(cols*figsizeCol, rows*figsizeRow))

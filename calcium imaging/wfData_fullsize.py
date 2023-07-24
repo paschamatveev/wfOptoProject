@@ -4,184 +4,190 @@ import numpy as np
 import os
 from pathlib import Path
 import scipy
-class wfData:
+
+import pytoolsAL as ptAL
+
+class wfOpto:
     '''
-    creates all necessary items for working with widefield imaging data
-    defines functions for creating various types of videos
-    defines functions for creating various types of activity graphs
+    contains some functions for common operations with wf-opto data
     '''
-    def __init__(self, pathSubject, pathStim):
-        '''
-        creates all the items
-        '''
+    def __init__(self, pathSubject):
         serverPath = Path(pathSubject)
         self.timeFile = serverPath / 'cameraFrameTimes.npy'
-        self.frameTimes = np.squeeze(np.load(self.timeFile))[::2]
+        self.frameTimes = np.squeeze(np.load(self.timeFile))[::2] # every other frame - we want blue only
         self.svdTemp = np.load(serverPath / 'corr/svdTemporalComponents_corr.npy')
         self.svdSpat = np.load(serverPath / 'blue/svdSpatialComponents.npy')
-        self.svdSpatModify = self.svdSpat[:,:,:500]
         self.meanImage = np.load(serverPath / 'blue/meanImage.npy')
-        self.stimOnTimes = np.squeeze(np.load(pathStim / 'linTestOnTimes.npy'))
-        self.stimContrasts = np.squeeze(np.load(pathStim / 'linTestContrasts.npy'))
-        self.stimDurations = np.squeeze(np.load(pathStim / 'linTestDurations.npy'))
-        self.getTempComp = scipy.interpolate.interp1d(self.frameTimes, self.svdTemp, axis=0)
-        self.spatial = (self.svdSpatModify).reshape(560*560, -1)
-        self.contrasts = np.unique(self.stimContrasts)
-        self.durations = np.unique(self.stimDurations)
-    def getContrasts():
-        return self.contrasts
-    def getDurations():
-        return self.durations
-    def modifyCountComponents(self, start=0, stop=500):
+        self.laserOn = np.squeeze(np.load(serverPath / 'laserOnTimes.npy'))
+        self.laserOff = np.squeeze(np.load(serverPath / 'laserOffTimes.npy'))
+        self.svdSpatFull = self.svdSpat[:,:,:500]
+        self.laserPowers = np.squeeze(np.load(serverPath /'laserPowers.npy'))
+        self.px, self.py, self.ncomps = self.svdSpatFull.shape
+        self.svdSpat = self.svdSpatFull.reshape(self.px*self.py, self.ncomps)
+        self.tToWf = scipy.interpolate.interp1d(self.frameTimes, self.svdTemp, axis=0, fill_value='extrapolate')
+    def oneTrial(self, start, stop, step, trial):
         '''
-        modifies how many components are used in visualizations
+        creates video for a single trial
         '''
-        self.svdTempModify = self.svdTemp[:,start:stop]
-        self.getTempComp = scipy.interpolate.interp1d(self.frameTimes, self.svdTempModify, axis=0)
-        self.svdSpatModify = self.svdSpat[:,:,start:stop]
-        self.spatial = (self.svdSpatModify).reshape(560*560, -1)
-    def quickCreateVideo(self):
-        '''
-        creates video which can be used for plotting in one function 
-        don't have to run all trial_timeFunc, trial_activityFunc, or createVideo separately
-        assumes not oneTime, and has defualts of .1 and .6 for the trial times
-        '''
-        self.trial_time = [np.linspace(i-.1, i+.6, 100) for i in self.stimOnTimes]
-        self.trial_time = np.array(self.trial_time)
-        self.trial_activity = self.getTempCompFunc(self.trial_time)
-        self.trial_activity = np.mean(self.trial_activity, axis=0)
-        self.video = self.spatial @ self.trial_activity.T
-        self.video = (self.video).reshape(560,560,-1)
-    def trial_timeFunc(self, start, end, step, oneTime=False, loc=-1):
-        '''
-        creates trial timings for a specified start before time, an end after the time, with a 'step' count of
-        time points in between.
-        oneTime deliniates if we are creating trial times around one trial (True) or around all trials (False)
-        loc is also only used if we are creating trial times around one stimulus (oneTime must be true)
-        '''
-        self.oneTime = oneTime
-        if oneTime==True:
-            startTime = self.stimOnTimes[loc] - start
-            endTime = self.stimOnTimes[loc] + end
-            self.trial_time = np.linspace(startTime, endTime, step)
-            self.trial_time = np.array(self.trial_time)
-        else:
-            self.trial_time = [np.linspace(i-0.1, i+0.6, 100) for i in self.stimOnTimes]
-            self.trial_time = np.array(self.trial_time)
-        return self.trial_time
-    def getTempCompFunc(self, trial_time_input):
-        '''
-        defines the interpolation function used to return trial activity
-        '''
-        return self.getTempComp(trial_time_input)
-    def trial_activityFunc(self, trial_time_input):
-        '''
-        uses getTempCompFunc to create trial activity for the desired trial times
-        '''
-        self.trial_activity = self.getTempCompFunc(trial_time_input)
-        self.trial_activity = np.array(self.trial_activity)
-        return self.trial_activity
-    def createVideo(self, trial_activity):
-        '''
-        checks if we want to make a video for a single timepoint
-        oneTime is created prior in trial_timeFunc if we are creating a video around just one trial 
-        '''
-        if self.oneTime==False:
-            trial_activity_re = np.mean(trial_activity, axis=0)
-        else:
-            trial_activity_re = trial_activity
-        self.video = self.spatial @ trial_activity_re.T
-        self.video = (self.video).reshape(560,560,-1)
-        return self.video
-    def plotBrain(self, rows=1, cols=1, avg=False, figsizeCol=2, figsizeRow=2):
-        '''
-        creates an image of the brain's activity
-        can create any number of images or any sort of grid size
-        avg allows us to create a picture of the average activity throughout all wanted trials 
-                                                    (deliniated by the size of trial_activity)
-        '''
-        if avg==True:
-            f = plt.figure(figsize=(cols*figsizeCol, rows*figsizeRow))
-            avg_trial_activity = np.mean(self.trial_activity, axis=1)
-            self.video_mean = np.mean(self.video, axis=2)
-            plt.imshow(self.video_mean[:, :], clim = np.percentile(self.video_mean, (2, 99.9)))
+        startTime = self.laserOn[trial] + start
+        endTime = self.laserOn[trial] + stop
+        
+        trial_time = np.linspace(startTime, endTime, step)
+        trial_activity = self.tToWf(trial_time)
+        
+        dwf = [np.diff(i, prepend=i[0]) for i in trial_activity.T]
+        dwf = np.array(dwf)
+        
+        spatial = self.svdSpatFull.reshape(560*560, -1)
+        video = spatial @ dwf
+        video = video.reshape(560, 560, -1)
+        
+        n_cols = 5
+        n_rows = 10
+        f = plt.figure(figsize=(n_cols*2, n_rows*2))
+        gs = mpl.gridspec.GridSpec(n_rows, n_cols)
+        for i in range(50):
+            ax = plt.subplot(gs[i])
+            plt.imshow(video[:, :, i*2],clim = np.percentile(video, (2, 99.9)), cmap='bwr')
+            plt.title(f't = {trial_time[i*2]:.2f}s')
             plt.colorbar()
-        else:
-            f = plt.figure(figsize=(cols*figsizeCol, rows*figsizeRow))
-            gs = mpl.gridspec.GridSpec(rows, cols)
-
-            for i in range(rows*cols):
-                ax = plt.subplot(gs[i])
-                plt.imshow(self.video[:, :, i*2], clim = np.percentile(self.video, (2, 99.9)))
-                plt.colorbar()
-
-            f.tight_layout()
-    def createContrastVideos(self, start, stop, step):
+            
+        f.tight_layout()
+    def allTrials(self, start, stop, step):
         '''
-        creates videos of pixel values across all contrasts for desired trials (deliniated by trial_time)
+        creates videos for all trials
         '''
-        videos=[]
-        for contrast in self.contrasts:
-            theseIndexes = np.squeeze(np.argwhere(self.stimContrasts == contrast))
+        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn]
+        trial_activity_all = self.tToWf(trial_time_all)
+        trial_activity_all = np.mean(trial_activity_all, axis=0)
+        
+        dwf = [np.diff(i, prepend=i[0]) for i in trial_activity_all]
+        dwf = np.array(dwf)
+        
+        spatial = self.svdSpatFull.reshape(560*560, -1)
+        video = spatial @ dwf.T
+        video = video.reshape(560, 560, -1)
+        
+        n_cols = 5
+        n_rows = 10
+        f = plt.figure(figsize=(n_cols*2, n_rows*2))
+        gs = mpl.gridspec.GridSpec(n_rows, n_cols)
+        for i in range(50):
+            ax = plt.subplot(gs[i])
+            brain=plt.imshow(video[:, :, i*2], clim = np.percentile(video, (2, 99.9)), cmap='bwr')
+            plt.colorbar(brain)
+            
+        f.tight_layout()
+    def fullAvg(self,start,stop,step):
+        '''
+        creates one image for average of all trials
+        '''
+        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn]
+        trial_activity_all = self.tToWf(trial_time_all)
+        trial_activity_all = np.mean(trial_activity_all, axis=0)
+        
+        dwf = [np.diff(i, prepend=i[0]) for i in trial_activity_all]
+        dwf = np.array(dwf)
+        
+        avg_trial_activity = np.mean(dwf, axis=1)
 
-            stim = self.stimOnTimes[theseIndexes]
-            self.trial_time = [np.linspace(i-start, i+stop, step) for i in stim]
+        spatial = self.svdSpatFull.reshape(560*560, -1)
+        videoAvg = spatial @ dwf.T
+        videoAvg = videoAvg.reshape(560,560,-1)
+        videoAvg = np.mean(videoAvg, axis=2)
+        plt.imshow(videoAvg[:,:], clim = np.percentile(videoAvg, (2, 99.9)), cmap='bwr')
+    def compareAvgs(self, start=0, stop=100, n_col=10, n_row=10):
+        '''
+        creates image of avg activity for all trials between start and stop
+        '''
+        # creating an avg video for first 100 trials - yes diff
+        allVideos = []
+        spatial = self.svdSpatFull.reshape(560*560, -1)
+        for trial in range(start,stop):
+            startTime = self.laserOn[trial] - 0.5
+            endTime = self.laserOn[trial] + 1
+            
+            trial_time = np.linspace(startTime, endTime, 100)
+            trial_activity = self.tToWf(trial_time)
+            dwf = [np.diff(i, prepend=i[0]) for i in trial_activity.T]
+            dwf = np.array(dwf)
+            
+            avg_trial_activity = np.mean(dwf, axis=1)
+        
+            videoAvg = spatial @ avg_trial_activity.T
+            videoAvg = videoAvg.reshape(560,560,-1)
+            videoAvg = np.mean(videoAvg, axis=2)
+        
+            allVideos.append(videoAvg)
 
-            trial_activity = self.getTempComp(self.trial_time)
+        allVideos = np.array(allVideos)
 
-            reshape = np.mean(trial_activity, axis=0)
-            video = self.spatial @ reshape.T
+        f = plt.figure(figsize=(n_col*2, n_row*2))
+        gs = mpl.gridspec.GridSpec(n_row, n_col)
+        clim = np.percentile(allVideos,(2,99.9))
+        
+        for trial in range(start,stop):
+            ax = plt.subplot(gs[trial])
+            thisVideo = allVideos[trial]
+            plt.imshow(thisVideo, clim=clim, cmap='bwr')
+        
+            ax = ptAL.plotting.apply_image_defaults(ax)
+            plt.title("trial " + str(trial + 1))
+        
+            cb = ptAL.plotting.add_colorbar(ax)
+            
+        f.tight_layout()
+    def trackPixel(self, x, y, start=-.2,stop=.7,step=100,trialCountStart=0,trialCountStop=333):
+        ''' 
+        shows pixel activity over all trials
+        '''
+        timeScale = np.linspace(start,stop,step)
+        for i in range(trialCountStart,trialCountStop):
+            startTime = self.laserOn[i] + start
+            endTime = self.laserOn[i] + stop
+            
+            trial_time = np.linspace(startTime, endTime, 100)
+            trial_activity = self.tToWf(trial_time)
+            
+            dwf = [np.diff(i, prepend=i[0]) for i in trial_activity.T]
+            dwf = np.array(dwf)
+            
+            spatial = self.svdSpatFull.reshape(560*560, -1)
+            video = spatial @ dwf # can multiply by spatial indexing by just one pixel 
             video = video.reshape(560, 560, -1)
-            videos.append(video)
-
-        videos = np.array(videos)
-        return videos
-    def createDurationVideos(self, start, stop, step):
-        '''
-        creates videos of pixel values across all durations for desired trials
-        '''
-        videos=[]
-        for dur in self.durations:
-            theseIndexes = np.squeeze(np.argwhere(self.stimDurations==dur))
-            stim = self.stimOnTimes[theseIndexes]
-            self.trial_time=[np.linspace(i-start,i+stop,step) for i in stim]
-            trial_activity=self.getTempComp(self.trial_time)
-            reshape = np.mean(trial_activity,axis=0)
-            video=self.spatial @ reshape.T
-            video = video.reshape(560,560,-1)
-            videos.append(video)
-        videos=np.array(videos)
-        return videos
-    def createConDurVid(self, start, stop, step, durCount):
-        '''
-        creates videos of pixel values across all contrasts for each separate duration
-        '''
-        videos = [[] for x in range(durCount)]
-        for count,duration in enumerate(self.durations[:durCount]):
-            theseIndexesDur = np.squeeze(np.argwhere(self.stimDurations == duration))
-            for contrast in self.contrasts:
-                theseIndexesCon = np.squeeze(np.argwhere(self.stimContrasts == contrast))
-                indexes = np.intersect1d(theseIndexesCon, theseIndexesDur)
-                stim = self.stimOnTimes[indexes]
-                self.trial_time = [np.linspace(i-start, i+stop, step) for i in stim]
-
-                trial_activity = self.getTempComp(self.trial_time)
-
-                reshape = np.mean(trial_activity, axis=0)
-                video = self.spatial @ reshape.T
-                video = video.reshape(560, 560, -1)
-                videos[count].append(video)
                 
-        videos = np.array(videos)
-        return videos
-    def corrections(self, frames):
+            plt.plot(timeScale, video[420,450],marker='.',c='mediumorchid')
+        plt.xlabel('Trial Time (milisec)')
+        plt.ylabel('Activity')
+        plt.title('Activity of pixel 420, 450 over all trials')
+    def standardError(self, x, y, trialStart=0,trialStop=333,start=-.2,stop=.7,step=100):
+        ''' 
+        shows standard error for desired pixel activity over desired trials
         '''
-        does a df/f calculation for pixel values in a video
-        '''
-        videoCorr = np.mean(frames, axis=(0, 1))
-        minActivity = min(videoCorr)
-        if minActivity < 0:
-            videoCorr += minActivity*-1
-        f0 = np.mean(videoCorr[:6])
-        videoCorr = [(x-f0)/(f0+1) for x in videoCorr]
-        return np.array(videoCorr)
+        pixelVals = np.zeros((range(trialStart,trialStop),100))
+        spatial = svdSpatFull.reshape(560*560, -1)
+        for trial in range(trialStart,trialStop):
+            startTime = self.laserOn[trial] - .1
+            endTime = self.laserOn[trial] + .7
+            
+            trial_time = np.linspace(startTime, endTime, 100)
+            trial_activity = self.tToWf(trial_time)
+        
+            dwf = [np.diff(i, prepend=i[0]) for i in trial_activity.T]
+            dwf = np.array(dwf)
+        
+            video = spatial @ trial_activity.T
+            video = video.reshape(560, 560, -1)
+        
+            for timePt in range(100):
+                # fills in activity of the desired pixel for all trials. 333x100, is filling in the 100 for the trial out of 333. uses 100 timepts. 
+                pixelVals[trial][timePt] = video[420,450,timePt]
+                
+        timeScale = np.linspace(start,stop,step)
+        plt.plot(timeScale,np.mean(pixelVals[:,:], axis=0),color='darkslateblue')
+        plt.fill_between(timeScale, \
+                         np.mean(pixelVals[:,:], axis=0)-scipy.stats.sem(pixelVals[:,:],axis=0),\
+                         np.mean(pixelVals[:,:],axis=0)+scipy.stats.sem(pixelVals[:,:],axis=0), color='lavender')
+        plt.xlabel("time in milisec")
+        plt.ylabel("activity")
+        plt.title("activity over trials, averaged, with standard error, (420,450)")

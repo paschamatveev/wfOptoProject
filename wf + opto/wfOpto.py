@@ -22,9 +22,18 @@ class wfOpto:
         self.laserOff = np.squeeze(np.load(serverPath / 'laserOffTimes.npy'))
         self.svdSpatFull = self.svdSpat[:,:,:500]
         self.laserPowers = np.squeeze(np.load(serverPath /'laserPowers.npy'))
+        self.galvoX = np.squeeze(np.load(serverPath/'galvoXPositions.npy'))
+        self.galvoY = np.squeeze(np.load(serverPath/'galvoYPositions.npy'))
         self.px, self.py, self.ncomps = self.svdSpatFull.shape
         self.svdSpat = self.svdSpatFull.reshape(self.px*self.py, self.ncomps)
         self.tToWf = scipy.interpolate.interp1d(self.frameTimes, self.svdTemp, axis=0, fill_value='extrapolate')
+        self.pulseLengths = []
+        for count,time in enumerate(self.laserOff):
+            length = self.laserOff[count]-self.laserOn[count]
+            self.pulseLengths.append(length)
+        self.pulseLengths = np.array(self.pulseLengths)
+    def tToWFManual(self, time):
+        return self.tToWFManual(time)
     def oneTrial(self, start, stop, step, trial):
         '''
         creates video for a single trial
@@ -104,8 +113,8 @@ class wfOpto:
         allVideos = []
         spatial = self.svdSpatFull.reshape(560*560, -1)
         for trial in range(start,stop):
-            startTime = self.laserOn[trial] - 0.5
-            endTime = self.laserOn[trial] + 1
+            startTime = self.laserOn[trial]
+            endTime = self.laserOn[trial] + .5
             
             trial_time = np.linspace(startTime, endTime, 100)
             trial_activity = self.tToWf(trial_time)
@@ -159,14 +168,16 @@ class wfOpto:
             plt.plot(timeScale, video[420,450],marker='.',c='mediumorchid')
         plt.xlabel('Trial Time (milisec)')
         plt.ylabel('Activity')
-        plt.title('Activity of pixel 420, 450 over all trials')
-    def standardError(self, x, y, trialStart=0,trialStop=333,start=-.2,stop=.7,step=100):
+        plt.title(f'Activity of pixel {x}, {y} over all trials')
+    def standardError(self, x, y, trialsYouNeed=[],start=-.2,stop=.7,step=100,brain=False):
         ''' 
         shows standard error for desired pixel activity over desired trials
+        indexes of trials that need to be plotted is done by user before 
         '''
-        pixelVals = np.zeros((range(trialStart,trialStop),100))
-        spatial = svdSpatFull.reshape(560*560, -1)
-        for trial in range(trialStart,trialStop):
+        xval = len(trialsYouNeed)
+        pixelVals = np.zeros((xval,100))
+        spatial = self.svdSpatFull.reshape(560*560, -1)
+        for trial in trialsYouNeed:
             startTime = self.laserOn[trial] - .1
             endTime = self.laserOn[trial] + .7
             
@@ -181,13 +192,39 @@ class wfOpto:
         
             for timePt in range(100):
                 # fills in activity of the desired pixel for all trials. 333x100, is filling in the 100 for the trial out of 333. uses 100 timepts. 
-                pixelVals[trial][timePt] = video[420,450,timePt]
-                
-        timeScale = np.linspace(start,stop,step)
-        plt.plot(timeScale,np.mean(pixelVals[:,:], axis=0),color='darkslateblue')
-        plt.fill_between(timeScale, \
-                         np.mean(pixelVals[:,:], axis=0)-scipy.stats.sem(pixelVals[:,:],axis=0),\
-                         np.mean(pixelVals[:,:],axis=0)+scipy.stats.sem(pixelVals[:,:],axis=0), color='lavender')
-        plt.xlabel("time in milisec")
-        plt.ylabel("activity")
-        plt.title("activity over trials, averaged, with standard error, (420,450)")
+                pixelVals[trial][timePt] = video[x,y,timePt]
+            timeScale = np.linspace(start,stop,step)
+        if brain:
+            trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[trialsYouNeed]]
+            trial_activity_all = self.tToWf(trial_time_all)
+            trial_activity_all = np.mean(trial_activity_all, axis=0)
+            
+            dwf = [np.diff(i, prepend=i[0]) for i in trial_activity_all]
+            dwf = np.array(dwf)
+            
+            avg_trial_activity = np.mean(dwf, axis=1)
+            
+            spatial = self.svdSpatFull.reshape(560*560, -1)
+            videoAvg = spatial @ dwf.T
+            videoAvg = videoAvg.reshape(560,560,-1)
+            videoAvg = np.mean(videoAvg, axis=2)
+
+            fig, (ax1,ax2) = plt.subplots(1,2)
+            ax1.plot(timeScale,np.mean(pixelVals[:,:], axis=0),color='darkslateblue')
+            ax1.fill_between(timeScale, \
+                             np.mean(pixelVals[:,:], axis=0)-scipy.stats.sem(pixelVals[:,:],axis=0),\
+                             np.mean(pixelVals[:,:],axis=0)+scipy.stats.sem(pixelVals[:,:],axis=0), color='lavender')
+            ax1.set_xlabel("time in milisec")
+            ax1.set_ylabel("activity")
+            ax1.set_title(f'Standard error for pixel {x}, {y}')
+
+            ax2.imshow(videoAvg[:,:], clim = np.percentile(videoAvg, (2, 99.9)), cmap='bwr')
+            ax2.scatter([x],[y],color='green',marker='v')
+        else:
+            plt.plot(timeScale,np.mean(pixelVals[:,:], axis=0),color='darkslateblue')
+            plt.fill_between(timeScale, \
+                             np.mean(pixelVals[:,:], axis=0)-scipy.stats.sem(pixelVals[:,:],axis=0),\
+                             np.mean(pixelVals[:,:],axis=0)+scipy.stats.sem(pixelVals[:,:],axis=0), color='lavender')
+            plt.xlabel("time in milisec")
+            plt.ylabel("activity")
+            plt.title(f'Standard error for pixel {x}, {y}')

@@ -11,7 +11,7 @@ class wfOpto:
     '''
     contains some functions for common operations with wf-opto data
     '''
-    def __init__(self, pathSubject, listExps=0):
+    def __init__(self, pathSubject, listExps=None):
         '''
         pathSubject - path to the experiments
         listExps - a list of lists. used if there are multiple experiments done in one session. 
@@ -35,9 +35,8 @@ class wfOpto:
         self.svdSpat = self.svdSpatFull.reshape(self.px*self.py, self.ncomps)
         self.tToWf = scipy.interpolate.interp1d(self.frameTimes, self.svdTemp, axis=0, fill_value='extrapolate')
         self.spatial = self.svdSpatFull.reshape(560*560,-1)
-        if listExps == 0:
-            listExps = [[]]
-            listExps[0] = np.r_(range(len(self.laserPowers)))
+        if listExps == None:
+            listExps = np.array([np.arange(len(self.laserPowers))])
         self.listExps = listExps
         self.pulseLengths = []
         for count,time in enumerate(self.laserOff):
@@ -53,8 +52,8 @@ class wfOpto:
         creates video for a single trial
         user must employ python indexing (starting with 0) 
         '''
-        startTime = self.laserOn[self.listExps[exp][0][trial]] + start
-        endTime = self.laserOn[self.listExps[exp][0][trial]] + stop
+        startTime = self.laserOn[self.listExps[exp][trial]] + start
+        endTime = self.laserOn[self.listExps[exp][trial]] + stop
         
         trial_time = np.linspace(startTime, endTime, step)
         trial_activity = self.tToWf(trial_time)
@@ -81,7 +80,7 @@ class wfOpto:
         '''
         videos for all trials
         '''
-        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp][0]]]
+        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp]]]
         trial_activity_all = self.tToWf(trial_time_all)
         trial_activity_all = np.mean(trial_activity_all, axis=0)
         
@@ -107,8 +106,8 @@ class wfOpto:
         creates one image for average of all trials that are selected using the trials argument 
         '''
         if trials == 0:
-            trials = np.linspace(self.listExps[exp][0][0],self.listExps[exp][0][-1], self.listExps[exp][0][-1]-self.listExps[exp][0][0], dtype=int)
-        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp][0]]]
+            trials = np.linspace(self.listExps[exp][0],self.listExps[exp][-1], self.listExps[exp][-1]-self.listExps[exp][0], dtype=int)
+        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp]]]
         trial_activity_all = self.tToWf(trial_time_all)
         trial_activity_all = np.mean(trial_activity_all, axis=0)
         
@@ -132,8 +131,8 @@ class wfOpto:
         if trials == 0:
             trials = np.linspace(0,100,100,dtype=int)
         for trial in trials:
-            startTime = self.laserOn[self.listExps[exp][0][trial]]
-            endTime = self.laserOn[self.listExps[exp][0][trial]] + .5
+            startTime = self.laserOn[self.listExps[exp][trial]]
+            endTime = self.laserOn[self.listExps[exp][trial]] + .5
             
             trial_time = np.linspace(startTime, endTime, 100)
             trial_activity = self.tToWf(trial_time)
@@ -161,10 +160,10 @@ class wfOpto:
             
             ax = ptAL.plotting.apply_image_defaults(ax)
             plt.title("trial " + str(trial + 1))
-            x = self.galvoX[self.listExps[exp][0][trial]]
-            y = self.galvoY[self.listExps[exp][0][trial]]
-            length = self.pulseLengths[self.listExps[exp][0][trial]]
-            power = self.laserPowers[self.listExps[exp][0][trial]]
+            x = self.galvoX[self.listExps[exp][trial]]
+            y = self.galvoY[self.listExps[exp][trial]]
+            length = self.pulseLengths[self.listExps[exp][trial]]
+            power = self.laserPowers[self.listExps[exp][trial]]
             plt.text(0,800,f'position: [{x},{y}] \n length: {length:.5f} \n power: {power}', fontsize=10)
 
             cb = ptAL.plotting.add_colorbar(ax)
@@ -176,8 +175,8 @@ class wfOpto:
         '''
         timeScale = np.linspace(start,stop,step)
         for trial in range(trialStart,trialStop):
-            startTime = self.laserOn[self.listExps[exp][0][trial]] + start
-            endTime = self.laserOn[self.listExps[exp][0][trial]] + stop
+            startTime = self.laserOn[self.listExps[exp][trial]] + start
+            endTime = self.laserOn[self.listExps[exp][trial]] + stop
             
             trial_time = np.linspace(startTime, endTime, 100)
             trial_activity = self.tToWf(trial_time)
@@ -198,13 +197,13 @@ class wfOpto:
         standard error for a certain pixel over certain trials
         '''
         if trials == 0:
-            trials = np.linspace(self.listExps[exp][0][0],self.listExps[exp][0][-1]-1, self.listExps[exp][0][-1]-self.listExps[exp][0][0], dtype=int)
+            trials = np.linspace(self.listExps[exp][0],self.listExps[exp][-1]-1, self.listExps[exp][-1]-self.listExps[exp][0], dtype=int)
         xval = len(trials)
         pixelVals = np.zeros((xval,100))
         spatial = self.svdSpatFull.reshape(560*560, -1)
         for trial in trials:
-            startTime = self.laserOn[self.listExps[exp][0][trial]] - .1
-            endTime = self.laserOn[self.listExps[exp][0][trial]] + .7
+            startTime = self.laserOn[self.listExps[exp][trial]] - .1
+            endTime = self.laserOn[self.listExps[exp][trial]] + .7
             
             trial_time = np.linspace(startTime, endTime, 100)
             trial_activity = self.tToWf(trial_time)
@@ -220,7 +219,7 @@ class wfOpto:
                 pixelVals[trial][timePt] = video[x,y,timePt]
             timeScale = np.linspace(start,stop,step)
         if brain:
-            trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp][0][trial]]]
+            trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp]]]
             trial_activity_all = self.tToWf(trial_time_all)
             trial_activity_all = np.mean(trial_activity_all, axis=0)
             

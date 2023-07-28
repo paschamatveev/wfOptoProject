@@ -47,7 +47,7 @@ class wfOpto:
     def tToWFManual(self, time):
         self.trial_activity = self.tToWf(time)
         return self.trial_activity
-    def oneTrial(self, start, stop, step, trial, exp=0):
+    def oneTrial(self, start, stop, step, trial=0, exp=0):
         '''
         creates video for a single trial
         user must employ python indexing (starting with 0) 
@@ -101,13 +101,13 @@ class wfOpto:
             plt.colorbar(brain)
             
         f.tight_layout()
-    def fullAvg(self,start,stop,step,trials=0,exp=0):
+    def fullAvg(self,start,stop,step,trials=None,exp=0):
         '''
         creates one image for average of all trials that are selected using the trials argument 
         '''
-        if trials == 0:
+        if trials.any() == None:
             trials = np.linspace(self.listExps[exp][0],self.listExps[exp][-1], self.listExps[exp][-1]-self.listExps[exp][0], dtype=int)
-        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp]]]
+        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp][trials]]]
         trial_activity_all = self.tToWf(trial_time_all)
         trial_activity_all = np.mean(trial_activity_all, axis=0)
         
@@ -121,15 +121,15 @@ class wfOpto:
         videoAvg = videoAvg.reshape(560,560,-1)
         videoAvg = np.mean(videoAvg, axis=2)
         plt.imshow(videoAvg[:,:], clim = np.percentile(videoAvg, (2, 99.9)), cmap='bwr')
-    def compareAvgs(self, trials=0, start=0, stop=100, n_col=10, n_row=10, exp=0):
+    def compareAvgs(self, trials=None, start=0, stop=100, n_col=10, n_row=10, exp=0):
         '''
         creates image of avg activity for all trials between start and stop
         uses trials argument to decide which trials to do.
         user has to know how they want their trials to be represented, and how their trials will fit in their desired rows/cols
         '''
         allVideos = []
-        if trials == 0:
-            trials = np.linspace(0,100,100,dtype=int)
+        if np.any(trials) == None:
+            trials = np.linspace(start,stop,100,dtype=int)
         for trial in trials:
             startTime = self.laserOn[self.listExps[exp][trial]]
             endTime = self.laserOn[self.listExps[exp][trial]] + .5
@@ -153,9 +153,9 @@ class wfOpto:
         gs = mpl.gridspec.GridSpec(n_row, n_col)
         clim = np.percentile(allVideos,(2,99.9))
         
-        for trial in range(len(trials-1)):
-            ax = plt.subplot(gs[trial])
-            thisVideo = allVideos[trial]
+        for count,trial in enumerate(trials):
+            ax = plt.subplot(gs[count])
+            thisVideo = allVideos[count]
             plt.imshow(thisVideo, clim=clim, cmap='bwr')
             
             ax = ptAL.plotting.apply_image_defaults(ax)
@@ -164,15 +164,18 @@ class wfOpto:
             y = self.galvoY[self.listExps[exp][trial]]
             length = self.pulseLengths[self.listExps[exp][trial]]
             power = self.laserPowers[self.listExps[exp][trial]]
-            plt.text(0,800,f'position: [{x},{y}] \n length: {length:.5f} \n power: {power}', fontsize=10)
+            plt.text(0,700,f'position: [{x},{y}] \n length: {length:.5f} \n power: {power}', fontsize=10)
 
             cb = ptAL.plotting.add_colorbar(ax)
             
         f.tight_layout()
-    def trackPixel(self, x, y, start=-.2,stop=.7,step=100,exp=0,trialStart=0,trialStop=333):
+    def trackPixel(self, x, y, start=-.2,stop=.7,step=100,exp=0,trialStart=None,trialStop=None):
         '''
         pixel activity over desired trials
         '''
+        if trialStop == None:
+            trialStart = self.listExps[exp][0]-self.listExps[exp][0]
+            trialStop = (self.listExps[exp][-1]-1) - self.listExps[exp][0]
         timeScale = np.linspace(start,stop,step)
         for trial in range(trialStart,trialStop):
             startTime = self.laserOn[self.listExps[exp][trial]] + start
@@ -191,13 +194,13 @@ class wfOpto:
             plt.plot(timeScale, video[420,450],marker='.',c='mediumorchid')
         plt.xlabel('Trial Time (milisec)')
         plt.ylabel('Activity')
-        plt.title(f'Activity of pixel {x}, {y} over all trials')
-    def standardError(self, x, y, exp=0, trials=0,start=-.2,stop=.7,step=100,brain=False):
+        plt.title(f'Activity of pixel {x}, {y} over trials {trialStart} - {trialStop}')
+    def standardError(self, x, y, exp=0, trials=None,start=-.2,stop=.7,step=100,brain=False):
         '''
         standard error for a certain pixel over certain trials
         '''
-        if trials == 0:
-            trials = np.linspace(self.listExps[exp][0],self.listExps[exp][-1]-1, self.listExps[exp][-1]-self.listExps[exp][0], dtype=int)
+        if trials.any() == None:
+            trials = np.arange(self.listExps[exp][0]-self.listExps[exp][0],(self.listExps[exp][-1]-1) - self.listExps[exp][0], 1)
         xval = len(trials)
         pixelVals = np.zeros((xval,100))
         spatial = self.svdSpatFull.reshape(560*560, -1)

@@ -107,7 +107,7 @@ class wfOpto:
         '''
         if trials.any() == None:
             trials = np.linspace(self.listExps[exp][0],self.listExps[exp][-1], self.listExps[exp][-1]-self.listExps[exp][0], dtype=int)
-        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp][trials]]]
+        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp]]]
         trial_activity_all = self.tToWf(trial_time_all)
         trial_activity_all = np.mean(trial_activity_all, axis=0)
         
@@ -121,7 +121,7 @@ class wfOpto:
         videoAvg = videoAvg.reshape(560,560,-1)
         videoAvg = np.mean(videoAvg, axis=2)
         plt.imshow(videoAvg[:,:], clim = np.percentile(videoAvg, (2, 99.9)), cmap='bwr')
-    def compareAvgs(self, trials=None, start=0, stop=100, n_col=10, n_row=10, exp=0):
+    def compareAvgs(self, trials=None, start=0, stop=100, n_col=10, n_row=10, exp=0, get=False):
         '''
         creates image of avg activity for all trials between start and stop
         uses trials argument to decide which trials to do.
@@ -149,26 +149,29 @@ class wfOpto:
 
         allVideos = np.array(allVideos)
 
-        f = plt.figure(figsize=(n_col*3, n_row*3))
-        gs = mpl.gridspec.GridSpec(n_row, n_col)
-        clim = np.percentile(allVideos,(2,99.9))
-        
-        for count,trial in enumerate(trials):
-            ax = plt.subplot(gs[count])
-            thisVideo = allVideos[count]
-            plt.imshow(thisVideo, clim=clim, cmap='bwr')
+        if get:
+            return allVideos
+        else:
+            f = plt.figure(figsize=(n_col*3, n_row*3))
+            gs = mpl.gridspec.GridSpec(n_row, n_col)
+            clim = np.percentile(allVideos,(2,99.9))
             
-            ax = ptAL.plotting.apply_image_defaults(ax)
-            plt.title("trial " + str(trial + 1))
-            x = self.galvoX[self.listExps[exp][trial]]
-            y = self.galvoY[self.listExps[exp][trial]]
-            length = self.pulseLengths[self.listExps[exp][trial]]
-            power = self.laserPowers[self.listExps[exp][trial]]
-            plt.text(0,700,f'position: [{x},{y}] \n length: {length:.5f} \n power: {power}', fontsize=10)
-
-            cb = ptAL.plotting.add_colorbar(ax)
-            
-        f.tight_layout()
+            for count,trial in enumerate(trials):
+                ax = plt.subplot(gs[count])
+                thisVideo = allVideos[count]
+                plt.imshow(thisVideo, clim=clim, cmap='bwr')
+                
+                ax = ptAL.plotting.apply_image_defaults(ax)
+                plt.title("trial " + str(trial + 1))
+                x = self.galvoX[self.listExps[exp][trial]]
+                y = self.galvoY[self.listExps[exp][trial]]
+                length = self.pulseLengths[self.listExps[exp][trial]]
+                power = self.laserPowers[self.listExps[exp][trial]]
+                plt.text(0,700,f'position: [{x},{y}] \n length: {length:.5f} \n power: {power}', fontsize=10)
+    
+                cb = ptAL.plotting.add_colorbar(ax)
+                
+            f.tight_layout()
     def trackPixel(self, x, y, start=-.2,stop=.7,step=100,exp=0,trialStart=None,trialStop=None):
         '''
         pixel activity over desired trials

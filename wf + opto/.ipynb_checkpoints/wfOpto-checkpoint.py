@@ -47,7 +47,7 @@ class wfOpto:
     def tToWFManual(self, time):
         self.trial_activity = self.tToWf(time)
         return self.trial_activity
-    def oneTrial(self, start, stop, step, trial=0, exp=0):
+    def oneTrial(self, start, stop, step, trial=0, exp=0, mean=False):
         '''
         creates video for a single trial
         user must employ python indexing (starting with 0) 
@@ -63,6 +63,10 @@ class wfOpto:
         
         spatial = self.svdSpatFull.reshape(560*560, -1)
         video = self.spatial @ dwf
+
+        if mean:
+            mean = np.mean(video, axis=0)
+            video -= mean 
         video = video.reshape(560, 560, -1)
         
         n_cols = 5
@@ -76,7 +80,7 @@ class wfOpto:
             plt.colorbar()
             
         f.tight_layout()
-    def allTrials(self, start, stop, step,exp=0):
+    def allTrials(self, start, stop, step,exp=0,mean=False):
         '''
         videos for all trials
         '''
@@ -89,6 +93,9 @@ class wfOpto:
         
         spatial = (self.svdSpatFull).reshape(560*560, -1)
         video = spatial @ dwf.T
+        if mean:
+            mean = np.mean(video, axis=0)
+            video -= mean 
         video = video.reshape(560, 560, -1)
         
         n_cols = 5
@@ -101,13 +108,13 @@ class wfOpto:
             plt.colorbar(brain)
             
         f.tight_layout()
-    def fullAvg(self,start,stop,step,trials=None,exp=0):
+    def fullAvg(self,start=0,stop=.5,step=100,get=False,trials=None,exp=0,mean=False):
         '''
         creates one image for average of all trials that are selected using the trials argument 
         '''
         if trials.any() == None:
             trials = np.linspace(self.listExps[exp][0],self.listExps[exp][-1], self.listExps[exp][-1]-self.listExps[exp][0], dtype=int)
-        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp]]]
+        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp][trials]]]
         trial_activity_all = self.tToWf(trial_time_all)
         trial_activity_all = np.mean(trial_activity_all, axis=0)
         
@@ -118,10 +125,16 @@ class wfOpto:
         
         spatial = self.svdSpatFull.reshape(560*560, -1)
         videoAvg = spatial @ dwf.T
-        videoAvg = videoAvg.reshape(560,560,-1)
+        if mean:
+            mean = np.mean(videoAvg, axis=0)
+            videoAvg -= mean 
+        videoAvg = videoAvg.reshape(560, 560, -1)
         videoAvg = np.mean(videoAvg, axis=2)
-        plt.imshow(videoAvg[:,:], clim = np.percentile(videoAvg, (2, 99.9)), cmap='bwr')
-    def compareAvgs(self, trials=None, start=0, stop=100, n_col=10, n_row=10, exp=0, get=False):
+        if get:
+            return videoAvg
+        else:
+            plt.imshow(videoAvg[:,:], clim = np.percentile(videoAvg, (2, 99.9)), cmap='bwr')
+    def compareAvgs(self, trials=None, start=0, stop=100, n_col=10, n_row=10, exp=0, get=False, meanSub=False):
         '''
         creates image of avg activity for all trials between start and stop
         uses trials argument to decide which trials to do.
@@ -142,7 +155,10 @@ class wfOpto:
             avg_trial_activity = np.mean(dwf, axis=1)
         
             videoAvg = self.spatial @ avg_trial_activity.T
-            videoAvg = videoAvg.reshape(560,560,-1)
+            if meanSub:
+                mean = np.mean(videoAvg, axis=0)
+                videoAvg -= mean 
+            videoAvg = videoAvg.reshape(560, 560, -1)
             videoAvg = np.mean(videoAvg, axis=2)
         
             allVideos.append(videoAvg)
@@ -192,13 +208,16 @@ class wfOpto:
             
             spatial = self.svdSpatFull.reshape(560*560, -1)
             video = spatial @ dwf # can multiply by spatial indexing by just one pixel 
+            if mean:
+                mean = np.mean(video, axis=0)
+                video -= mean 
             video = video.reshape(560, 560, -1)
                 
             plt.plot(timeScale, video[420,450],marker='.',c='mediumorchid')
         plt.xlabel('Trial Time (milisec)')
         plt.ylabel('Activity')
         plt.title(f'Activity of pixel {x}, {y} over trials {trialStart} - {trialStop}')
-    def standardError(self, x, y, exp=0, trials=None,start=-.2,stop=.7,step=100,brain=False):
+    def standardError(self, x, y, exp=0, trials=None,start=-.2,stop=.7,step=100,brain=False,mean=False):
         '''
         standard error for a certain pixel over certain trials
         '''
@@ -218,6 +237,9 @@ class wfOpto:
             dwf = np.array(dwf)
         
             video = spatial @ trial_activity.T
+            if mean:
+                mean = np.mean(video, axis=0)
+                video -= mean 
             video = video.reshape(560, 560, -1)
         
             for timePt in range(100):
@@ -235,7 +257,11 @@ class wfOpto:
             avg_trial_activity = np.mean(dwf, axis=1)
             
             videoAvg = self.spatial @ dwf.T
-            videoAvg = videoAvg.reshape(560,560,-1)
+            if mean:
+                mean = np.mean(videoAvg, axis=0)
+                videoAvg -= mean 
+            else:
+                videoAvg = videoAvg.reshape(560, 560, -1)
             videoAvg = np.mean(videoAvg, axis=2)
 
             fig, (ax1,ax2) = plt.subplots(1,2)

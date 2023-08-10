@@ -158,7 +158,7 @@ class wfOpto:
             thisVideo = allVideos[count]
             plt.imshow(thisVideo, clim=clim, cmap='bwr')
             
-            # ax = ptAL.plotting.apply_image_defaults(ax)
+            ax = ptAL.plotting.apply_image_defaults(ax)
             plt.title("trial " + str(trial + 1))
             x = self.galvoX[self.listExps[exp][trial]]
             y = self.galvoY[self.listExps[exp][trial]]
@@ -167,7 +167,7 @@ class wfOpto:
             plt.text(0,700,f'position: [{x},{y}] \n length: {length:.5f} \n power: {power}', fontsize=10)
             plt.xlabel([])
             plt.ylabel([])
-            # cb = ptAL.plotting.add_colorbar(ax)
+            cb = ptAL.plotting.add_colorbar(ax)
             
         f.tight_layout()
     def trackPixel(self, x, y, start=-.2,stop=.7,step=100,exp=0,trialStart=None,trialStop=None):

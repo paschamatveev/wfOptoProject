@@ -121,7 +121,7 @@ class wfOpto:
         videoAvg = videoAvg.reshape(560,560,-1)
         videoAvg = np.mean(videoAvg, axis=2)
         plt.imshow(videoAvg[:,:], clim = np.percentile(videoAvg, (2, 99.9)), cmap='bwr')
-    def compareAvgs(self, trials=None, start=0, stop=100, n_col=10, n_row=10, exp=0):
+    def compareAvgs(self, trials=None, start=0, stop=100, n_col=10, n_row=10, exp=0, color='bwr'):
         '''
         creates image of avg activity for all trials between start and stop
         uses trials argument to decide which trials to do.
@@ -156,18 +156,18 @@ class wfOpto:
         for count,trial in enumerate(trials):
             ax = plt.subplot(gs[count])
             thisVideo = allVideos[count]
-            plt.imshow(thisVideo, clim=clim, cmap='bwr')
+            plt.imshow(thisVideo, clim=clim, cmap=color)
             
-            ax = ptAL.plotting.apply_image_defaults(ax)
+            #ax = ptAL.plotting.apply_image_defaults(ax)
             plt.title("trial " + str(trial + 1))
             x = self.galvoX[self.listExps[exp][trial]]
             y = self.galvoY[self.listExps[exp][trial]]
             length = self.pulseLengths[self.listExps[exp][trial]]
             power = self.laserPowers[self.listExps[exp][trial]]
             plt.text(0,700,f'position: [{x},{y}] \n length: {length:.5f} \n power: {power}', fontsize=10)
-            plt.xlabel([])
-            plt.ylabel([])
-            cb = ptAL.plotting.add_colorbar(ax)
+            plt.xticks([])
+            plt.yticks([])
+            #cb = ptAL.plotting.add_colorbar(ax)
             
         f.tight_layout()
     def trackPixel(self, x, y, start=-.2,stop=.7,step=100,exp=0,trialStart=None,trialStop=None):

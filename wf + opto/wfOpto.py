@@ -101,7 +101,7 @@ class wfOpto:
             plt.colorbar(brain)
             
         f.tight_layout()
-    def fullAvg(self,start,stop,step,trials=None,exp=0):
+    def fullAvg(self,start,stop,step,trials=None,exp=0, xend=560,yend=560, xstart=0, ystart=0):
         '''
         creates one image for average of all trials that are selected using the trials argument 
         '''
@@ -120,7 +120,7 @@ class wfOpto:
         videoAvg = spatial @ dwf.T
         videoAvg = videoAvg.reshape(560,560,-1)
         videoAvg = np.mean(videoAvg, axis=2)
-        plt.imshow(videoAvg[:,:], clim = np.percentile(videoAvg, (2, 99.9)), cmap='bwr')
+        plt.imshow(videoAvg[xstart:xend, ystart:yend], clim = np.percentile(videoAvg, (2, 99.9)), cmap='bwr')
     def compareAvgs(self, trials=None, start=0, stop=100, n_col=10, n_row=10, exp=0, color='bwr'):
         '''
         creates image of avg activity for all trials between start and stop

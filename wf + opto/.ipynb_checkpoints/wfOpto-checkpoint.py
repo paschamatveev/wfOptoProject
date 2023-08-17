@@ -76,11 +76,11 @@ class wfOpto:
             plt.colorbar()
             
         f.tight_layout()
-    def allTrials(self, start, stop, step,exp=0):
+    def allTrials(self, start, stop, step, trials, exp=0):
         '''
         videos for all trials
         '''
-        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp]]]
+        trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp][trials]]]
         trial_activity_all = self.tToWf(trial_time_all)
         trial_activity_all = np.mean(trial_activity_all, axis=0)
         

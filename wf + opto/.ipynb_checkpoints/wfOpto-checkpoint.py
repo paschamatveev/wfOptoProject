@@ -192,7 +192,7 @@ class wfOpto:
             video = spatial @ dwf # can multiply by spatial indexing by just one pixel 
             video = video.reshape(560, 560, -1)
                 
-            plt.plot(timeScale, video[420,450],marker='.',c='mediumorchid')
+            plt.plot(timeScale, video[y,x],marker='.',c='mediumorchid')
         plt.xlabel('Trial Time (milisec)')
         plt.ylabel('Activity')
         plt.title(f'Activity of pixel {x}, {y} over trials {trialStart} - {trialStop}')

@@ -106,8 +106,8 @@ class wfOpto:
         '''
         creates one image for average of all trials that are selected using the trials argument 
         '''
-        if trials.any() == None:
-            trials = np.linspace(self.listExps[exp][0],self.listExps[exp][-1], self.listExps[exp][-1]-self.listExps[exp][0], dtype=int)
+        # if trials.any() == None:
+        #     trials = np.linspace(self.listExps[exp][0],self.listExps[exp][-1], self.listExps[exp][-1]-self.listExps[exp][0], dtype=int)
         trial_time_all = [np.linspace(i+start, i+stop, step) for i in self.laserOn[self.listExps[exp][trials]]]
         trial_activity_all = self.tToWf(trial_time_all)
         trial_activity_all = np.mean(trial_activity_all, axis=0)

@@ -26,15 +26,19 @@ class wfOpto:
         self.svdSpatFull = self.svdSpat[:,:,:500]
         
         self.meanImage = np.load(serverPath / 'blue/meanImage.npy')
-        self.laserOn = np.squeeze(np.load(serverPath / 'laserOnTimes.npy'))
-        self.laserOff = np.squeeze(np.load(serverPath / 'laserOffTimes.npy'))
-        self.laserPowers = np.squeeze(np.load(serverPath /'laserPowers.npy'))
+        self.laserOn = np.squeeze(np.load(serverPath / 'laserOnTimes_test.npy'))
+        self.laserOff = np.squeeze(np.load(serverPath / 'laserOffTimes_test.npy'))
+        self.laserPowers = np.squeeze(np.load(serverPath /'laserPowers_test.npy'))
         self.galvoX = np.squeeze(np.load(serverPath/'galvoXPositions.npy'))
         self.galvoY = np.squeeze(np.load(serverPath/'galvoYPositions.npy'))
         self.px, self.py, self.ncomps = self.svdSpatFull.shape
         
         self.svdSpat = self.svdSpatFull.reshape(self.px*self.py, self.ncomps)
-        self.tToWf = scipy.interpolate.interp1d(self.frameTimes, self.svdTemp, axis=0, fill_value='extrapolate')
+        if len(self.frameTimes) != len(self.svdTemp):
+            length = min([len(self.frameTimes), len(self.svdTemp)])
+            self.tToWf = scipy.interpolate.interp1d(self.frameTimes[:length], self.svdTemp[:length], axis=0, fill_value='extrapolate')
+        else:
+            self.tToWf = scipy.interpolate.interp1d(self.frameTimes, self.svdTemp, axis=0, fill_value='extrapolate')
         self.spatial = self.svdSpatFull.reshape(560*560,-1)
         if listExps == None:
             listExps = np.array([np.arange(len(self.laserPowers))])

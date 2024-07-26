@@ -1,7 +1,7 @@
 %% Script to analyze a new widefield+opto recording
 
-% githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
-githubDir= 'C:\GitHub\wf gui';
+githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
+% githubDir= 'C:\GitHub\wf gui';
 
 %% paths 
 
@@ -64,7 +64,7 @@ expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
 % once i figure that out!
 
 for i = 1:size(expStart)
-    serverRoot_exp = expPath(mn, td, i+2);
+    serverRoot_exp = expPath(mn, td, i+1);
     
     %convert to samples 
     indStart = find(t==expStart(i));
@@ -74,21 +74,23 @@ for i = 1:size(expStart)
     t_exp = t(indStart:indEnd);
     gx_exp = gx(indStart:indEnd);
     gy_exp = gy(indStart:indEnd);
+    cameraTrigger_exp = cameraTrigger(indStart:indEnd);
     
+    [~, laserOnexp, laserOffexp] = schmittTimes(t_exp, laser_exp, [0.025 0.075]);
+    laserPowerexp = round(interp1(t_exp, laser_exp, laserOnexp+0.005), 1); % interp halfway through stim when laser has been on
+    galvoXPosexp = round(interp1(t_exp, gx_exp, laserOnexp), 1);
+    galvoYPosexp = round(interp1(t_exp, gy_exp, laserOnexp), 1);
     
-    [~, laserOn_exp, laserOff_exp] = schmittTimes(t_exp, laser_exp, [0.025 0.075]);
-    laserPower_exp = round(interp1(t_exp, laser_exp, laserOn_exp+0.005), 1); % interp halfway through stim when laser has been on
-    galvoXPos_exp = round(interp1(t_exp, gx_exp, laserOn_exp), 1);
-    galvoYPos_exp = round(interp1(t_exp, gy_exp, laserOn_exp), 1);
-    
-    galvoPos_exp = [galvoXPos_exp, galvoYPos_exp];
+    galvoPos_exp = [galvoXPosexp, galvoYPosexp];
 
-    writeNPY(laserOn_exp, fullfile(serverRoot_exp, 'laserOnTimes.npy'));
-    writeNPY(laserOff_exp, fullfile(serverRoot_exp, 'laserOffTimes.npy'));
-    writeNPY(laserPower_exp, fullfile(serverRoot_exp, 'laserPowers.npy'));
-    writeNPY(galvoXPos_exp, fullfile(serverRoot_exp, 'galvoXPositions.npy'));
-    writeNPY(galvoYPos_exp, fullfile(serverRoot_exp, 'galvoYPositions.npy'));
-    writeNPY(flipsUp_exp, fullfile(serverRoot_exp, 'cameraFrameTimes.npy'));
+    [flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger_exp, [1 4]);
+    % 
+    % writeNPY(laserOnexp, fullfile(serverRoot_exp, 'laserOnTimes.npy'));
+    % writeNPY(laserOffexp, fullfile(serverRoot_exp, 'laserOffTimes.npy'));
+    % writeNPY(laserPowerexp, fullfile(serverRoot_exp, 'laserPowers.npy'));
+    % writeNPY(galvoXPosexp, fullfile(serverRoot_exp, 'galvoXPositions.npy'));
+    % writeNPY(galvoYPosexp, fullfile(serverRoot_exp, 'galvoYPositions.npy'));
+    % writeNPY(flipsUp, fullfile(serverRoot_exp, 'cameraFrameTimes.npy'));
 end
 
 %% finding starts and ends
@@ -139,15 +141,9 @@ saveas(gcf,'stimtimes15.jpg')
 t = tsToT(ts, numel(laser));
 
 %find samples per sec
-sampPerSec= ts(2)/ts(2,2); % sample/sec
+sampPerSec= ts(2)/ts(2,2); % sample/set
 
-%one power onset per stimEnd/Start
-pwsMean=zeros(length(stimEnds),1); 
-pwsRnd=zeros(length(stimEnds),1);
-samplesList=zeros(length(stimEnds),1);
-durList=zeros(length(stimEnds),1);
-
-% test one at a time
+% test one exp at a time
 
 indStart = find(t==expStart(2));
 indEnd = find(t==expEnd(2));
@@ -165,7 +161,7 @@ tt_exp = tt(indStart:indEnd);
 v_exp = v(indStart:indEnd);
 laser_exp=laser(indStart:indEnd);
 
-threshold=.15;
+threshold=0.05;
 stimlen=0.05;
 stimTimes = tt_exp(v_exp(2:end)>threshold & v_exp(1:end-1)<=threshold); %find times where light is on, has to be at least 2V
 stimOffsets = tt_exp(v_exp(2:end)<threshold & v_exp(1:end-1)>=threshold);
@@ -176,43 +172,147 @@ stimStarts = stimTimes(ds); %ds
 gapDur = [stimTimes; max(tt)]-[0;stimOffsets];
 stimEnds = stimOffsets(gapDur(2:end)>stimlen);
 
-%testing testing
-% for i = 1:10
-%     startpt=stimStarts(i);
-%     endpt=stimEnds(i);
-% 
-%     samples = (endpt-startpt) * sampPerSec; %end sec - start sec * (samples/sec)
-%     samples = round(samples);
-%     samplesList(i)=samples;
-% 
-%     interp=zeros(samples,1);
-%     interp(:,1) = interp1(tt_exp,laser_exp,linspace(startpt,endpt,samples));
-% 
-%     pwsMean(i) = mean(interp); %find the mean laserPower between the start and end over samples 
-%     pwsRnd(i) = round(pwsMean(i),1);
-%     hold on
-%     plot(interp)
-% end
+%storage for checking
+pwsMean=zeros(length(stimEnds),1); 
+pwsRnd=zeros(length(stimEnds),1);
+samplesList=zeros(length(stimEnds),1);
+durList=zeros(length(stimEnds),1);
+lengthInterp = zeros(length(stimEnds),1);
 
-% 
-for i = 1:length(stimEnds)/2
+% find the powers
+for i = 1:length(stimEnds)
     startpt=stimStarts(i);
     endpt=stimEnds(i);
-    
+
     dur = round(endpt-startpt,2);
+    if dur == 0.02 % putting a bandaid on a boat leak right here 
+        dur = 0.025;
+    end
     samples = (dur) * sampPerSec; %end sec - start sec * (samples/sec)
     samplesList(i)=samples;
     durList(i) = dur;
 
     interp=zeros(samples,1);
-    interp(:,1) = interp1(tt_exp,laser_exp,linspace(round(stimStarts(i)),round(stimEnds(i)),samples));
+    interp(:,1) = interp1(tt_exp,laser_exp,linspace(startpt,endpt,samples));
 
+    lengthInterp(i) = length(interp(:,1));
     pwsMean(i) = mean(interp); %find the mean laserPower between the start and end over samples 
     pwsRnd(i) = round(pwsMean(i),1);
-    hold on
-    plot(interp,color='k')
 end
 
 disp("done")
 
+
+% plot one interp at a time
+interp=[];
+pwMean=[];
+pwRnd=[];
+samplesList=[];
+durList=[];
+i=180;
+startpt=stimStarts(i);
+endpt=stimEnds(i);
+
+dur = round(endpt-startpt,2);
+if dur == 0.02 % putting a bandaid on a boat leak right here 
+    dur = 0.025;
+end
+samples = (dur) * sampPerSec; %end sec - start sec * (samples/sec)
+samplesList(i)=samples;
+durList(i) = dur;
+
+interp(:,1) = interp1(tt_exp,laser_exp,linspace(startpt,endpt,samples));
+
+lengthInterp = length(interp(:,1));
+pwMean = mean(interp); %find the mean laserPower between the start and end over samples 
+pwRnd = round(pwMean,1);
+plot(interp)
+disp(pwRnd + " done")
+
 % writeNPY(pwsRnd, fullfile(serverRoot, 'laserPowers_test.npy'));
+
+%% separating exps + current laserPowers 40hz finding
+
+sampPerSec= ts(2)/ts(2,2); % sample/set
+
+%prep to find laser powers
+sigName = 'lightCommand';
+[tt, v] = getTLanalog(mn, td, ca_en, sigName);
+
+tInd = 1;
+traces(tInd).t = tt; %tsToT(ts, numel(raw), explicit times
+traces(tInd).v = v; %raw times
+traces(tInd).name = sigName;
+
+for i = 1:size(expStart)
+    serverRoot_exp = expPath(mn, td, i);
+
+    %convert to samples 
+    indStart = find(t==expStart(i));
+    indEnd = find(t==expEnd(i));
+    
+    %find lasers, galvos, times, camera,etc during the experiment
+    laser_exp = laser(indStart:indEnd); %expStart and expStop are in SECONDS. i need the INDEX where that SECOND happens. 
+    t_exp = t(indStart:indEnd);
+    gx_exp = gx(indStart:indEnd);
+    gy_exp = gy(indStart:indEnd);
+    cameraTrigger_exp = cameraTrigger(indStart:indEnd);
+    tt_exp = tt(indStart:indEnd);
+    v_exp = v(indStart:indEnd);
+    
+    %find the laser times 
+    threshold=0.05;
+    stimlen=0.05;
+    stimTimes = tt_exp(v_exp(2:end)>threshold & v_exp(1:end-1)<=threshold); %find times where light is on, has to be at least 2V
+    stimOffsets = tt_exp(v_exp(2:end)<threshold & v_exp(1:end-1)>=threshold);
+    
+    ds = find(diff([0;stimTimes])>stimlen); % find indeces where there is a stim, time between (i think) has to be greater than .05
+    stimStarts = stimTimes(ds); %ds
+    
+    gapDur = [stimTimes; max(tt)]-[0;stimOffsets];
+    stimEnds = stimOffsets(gapDur(2:end)>stimlen);
+    
+    %find laser powers
+    for i = 1:length(stimEnds)
+        startpt=stimStarts(i);
+        endpt=stimEnds(i);
+    
+        dur = round(endpt-startpt,2);
+        if dur == 0.02 % putting a bandaid on a boat leak right here (even tho it didnt do anything)
+            dur = 0.025;
+        end
+        samples = (dur) * sampPerSec; %end sec - start sec * (samples/sec)
+        samplesList(i)=samples;
+        durList(i) = dur;
+    
+        interp=zeros(samples,1);
+        interp(:,1) = interp1(t_exp,laser_exp,linspace(startpt,endpt,samples));
+    
+        lengthInterp(i) = length(interp(:,1));
+        pwsMean(i) = mean(interp); %find the mean laserPower between the start and end over samples 
+        pwsRnd(i) = round(pwsMean(i),1);
+    end
+    
+    %get galvos, flips
+    galvoXPosexp = round(interp1(t_exp, gx_exp, stimStarts), 1);
+    galvoYPosexp = round(interp1(t_exp, gy_exp, stimEnds), 1);
+    
+    galvoPos_exp = [galvoXPosexp, galvoYPosexp];
+    
+    [flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger_exp, [1 4]);
+    
+    % writeNPY(stimStarts, fullfile(serverRoot_exp, 'laserOnTimes.npy'));
+    % writeNPY(stimEnds, fullfile(serverRoot_exp, 'laserOffTimes.npy'));
+    % writeNPY(pwsRnd, fullfile(serverRoot_exp, 'laserPowers.npy'));
+    % writeNPY(galvoXPosexp, fullfile(serverRoot_exp, 'galvoXPositions.npy'));
+    % writeNPY(galvoYPosexp, fullfile(serverRoot_exp, 'galvoYPositions.npy'));
+    % writeNPY(flipsUp, fullfile(serverRoot_exp, 'cameraFrameTimes.npy'));
+end
+
+
+
+
+
+
+
+

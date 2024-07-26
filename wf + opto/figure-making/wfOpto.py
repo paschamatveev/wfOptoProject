@@ -26,9 +26,9 @@ class wfOpto:
         self.svdSpatFull = self.svdSpat[:,:,:500]
         
         self.meanImage = np.load(serverPath / 'blue/meanImage.npy')
-        self.laserOn = np.squeeze(np.load(serverPath / 'laserOnTimes_test.npy'))
-        self.laserOff = np.squeeze(np.load(serverPath / 'laserOffTimes_test.npy'))
-        self.laserPowers = np.squeeze(np.load(serverPath /'laserPowers_test.npy'))
+        self.laserOn = np.squeeze(np.load(serverPath / 'laserOnTimes.npy'))
+        self.laserOff = np.squeeze(np.load(serverPath / 'laserOffTimes.npy'))
+        self.laserPowers = np.squeeze(np.load(serverPath /'laserPowers.npy'))
         self.galvoX = np.squeeze(np.load(serverPath/'galvoXPositions.npy'))
         self.galvoY = np.squeeze(np.load(serverPath/'galvoYPositions.npy'))
         self.px, self.py, self.ncomps = self.svdSpatFull.shape

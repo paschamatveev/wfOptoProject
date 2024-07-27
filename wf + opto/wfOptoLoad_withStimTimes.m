@@ -10,8 +10,8 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AB_0032'; 
-td = '2024-07-19';
+mn = 'AL_0033'; 
+td = '2024-07-25';
 ca_en = 1; % widefield
 
 serverRoot = expPath(mn, td, ca_en);
@@ -197,37 +197,44 @@ for i = 1:length(stimEnds)
 
     lengthInterp(i) = length(interp(:,1));
     pwsMean(i) = mean(interp); %find the mean laserPower between the start and end over samples 
-    pwsRnd(i) = round(pwsMean(i),1);
+    pwRnd=round(pwsMean(i),1);
+    % if pwRnd == 1.6
+    %     pwRnd = 1.5;
+    % end
+    % if pwRnd == 1.8
+    %     pwRnd = 1.7;
+    % end
+    pwsRnd(i) = pwRnd;
 end
 
 disp("done")
 
 
 % plot one interp at a time
-interp=[];
-pwMean=[];
-pwRnd=[];
-samplesList=[];
-durList=[];
-i=180;
-startpt=stimStarts(i);
-endpt=stimEnds(i);
-
-dur = round(endpt-startpt,2);
-if dur == 0.02 % putting a bandaid on a boat leak right here 
-    dur = 0.025;
-end
-samples = (dur) * sampPerSec; %end sec - start sec * (samples/sec)
-samplesList(i)=samples;
-durList(i) = dur;
-
-interp(:,1) = interp1(tt_exp,laser_exp,linspace(startpt,endpt,samples));
-
-lengthInterp = length(interp(:,1));
-pwMean = mean(interp); %find the mean laserPower between the start and end over samples 
-pwRnd = round(pwMean,1);
-plot(interp)
-disp(pwRnd + " done")
+% interp=[];
+% pwMean=[];
+% pwRnd=[];
+% samplesList=[];
+% durList=[];
+% i=180;
+% startpt=stimStarts(i);
+% endpt=stimEnds(i);
+% 
+% dur = round(endpt-startpt,2);
+% if dur == 0.02 % putting a bandaid on a boat leak right here 
+%     dur = 0.025;
+% end
+% samples = (dur) * sampPerSec; %end sec - start sec * (samples/sec)
+% samplesList(i)=samples;
+% durList(i) = dur;
+% 
+% interp(:,1) = interp1(tt_exp,laser_exp,linspace(startpt,endpt,samples));
+% 
+% lengthInterp = length(interp(:,1));
+% pwMean = mean(interp); %find the mean laserPower between the start and end over samples 
+% pwRnd = round(pwMean,1);
+% plot(interp)
+% disp(pwRnd + " done")
 
 % writeNPY(pwsRnd, fullfile(serverRoot, 'laserPowers_test.npy'));
 
@@ -245,7 +252,7 @@ traces(tInd).v = v; %raw times
 traces(tInd).name = sigName;
 
 for i = 1:size(expStart)
-    serverRoot_exp = expPath(mn, td, i);
+    serverRoot_exp = expPath(mn, td, i+1);
 
     %convert to samples 
     indStart = find(t==expStart(i));
@@ -273,24 +280,31 @@ for i = 1:size(expStart)
     stimEnds = stimOffsets(gapDur(2:end)>stimlen);
     
     %find laser powers
-    for i = 1:length(stimEnds)
-        startpt=stimStarts(i);
-        endpt=stimEnds(i);
+    for j = 1:length(stimEnds)
+        startpt=stimStarts(j);
+        endpt=stimEnds(j);
     
         dur = round(endpt-startpt,2);
         if dur == 0.02 % putting a bandaid on a boat leak right here (even tho it didnt do anything)
             dur = 0.025;
         end
         samples = (dur) * sampPerSec; %end sec - start sec * (samples/sec)
-        samplesList(i)=samples;
-        durList(i) = dur;
+        samplesList(j)=samples;
+        durList(j) = dur;
     
         interp=zeros(samples,1);
         interp(:,1) = interp1(t_exp,laser_exp,linspace(startpt,endpt,samples));
     
-        lengthInterp(i) = length(interp(:,1));
-        pwsMean(i) = mean(interp); %find the mean laserPower between the start and end over samples 
-        pwsRnd(i) = round(pwsMean(i),1);
+        lengthInterp(j) = length(interp(:,1));
+        pwsMean(j) = mean(interp); %find the mean laserPower between the start and end over samples 
+        pwRnd=round(pwsMean(j),1);
+        % if pwRnd == 1.6
+        %     pwRnd = 1.5;
+        % end
+        % if pwRnd == 1.8
+        %     pwRnd = 1.7;
+        % end
+        pwsRnd(j) = pwRnd;
     end
     
     %get galvos, flips
@@ -309,8 +323,14 @@ for i = 1:size(expStart)
     % writeNPY(flipsUp, fullfile(serverRoot_exp, 'cameraFrameTimes.npy'));
 end
 
+%%
 
-
+i=2;
+indStart = find(t==expStart(i));
+indEnd = find(t==expEnd(i));
+t_exp = t(indStart:indEnd);
+cameraTrigger_exp = cameraTrigger(indStart:indEnd);
+[flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger_exp, [1 4]);
 
 
 

@@ -1,7 +1,7 @@
 %% Script to analyze a new widefield+opto recording
 
-githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
-% githubDir= 'C:\GitHub\wf gui';
+% githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
+githubDir= 'C:\GitHub\wf gui';
 
 %% paths 
 
@@ -10,7 +10,7 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AL_0033'; 
+mn = 'AL_0034'; 
 td = '2024-07-25';
 ca_en = 1; % widefield
 
@@ -145,8 +145,8 @@ sampPerSec= ts(2)/ts(2,2); % sample/set
 
 % test one exp at a time
 
-indStart = find(t==expStart(2));
-indEnd = find(t==expEnd(2));
+indStart = find(t==expStart(1));
+indEnd = find(t==expEnd(1));
 
 %isolate stimends and stimstarts for this exp
 sigName = 'lightCommand';
@@ -178,6 +178,9 @@ pwsRnd=zeros(length(stimEnds),1);
 samplesList=zeros(length(stimEnds),1);
 durList=zeros(length(stimEnds),1);
 lengthInterp = zeros(length(stimEnds),1);
+pwsMax=zeros(length(stimEnds),1); 
+pwsUnhalved=zeros(length(stimEnds),1); 
+
 
 % find the powers
 for i = 1:length(stimEnds)
@@ -194,17 +197,20 @@ for i = 1:length(stimEnds)
 
     interp=zeros(samples,1);
     interp(:,1) = interp1(tt_exp,laser_exp,linspace(startpt,endpt,samples));
+    pwsMax(i) = max(interp(:,1));
+    pwsUnhalved(i) = round(pwsMax(i),1);
+    pwsRnd(i)=round(pwsMax(i)/2,1);
 
-    lengthInterp(i) = length(interp(:,1));
-    pwsMean(i) = mean(interp); %find the mean laserPower between the start and end over samples 
-    pwRnd=round(pwsMean(i),1);
-    % if pwRnd == 1.6
-    %     pwRnd = 1.5;
-    % end
-    % if pwRnd == 1.8
-    %     pwRnd = 1.7;
-    % end
-    pwsRnd(i) = pwRnd;
+    % lengthInterp(i) = length(interp(:,1));
+    % pwsMean(i) = mean(interp); %find the mean laserPower between the start and end over samples 
+    % pwRnd=round(pwsMean(i),1);
+    % % if pwRnd == 1.6
+    % %     pwRnd = 1.5;
+    % % end
+    % % if pwRnd == 1.8
+    % %     pwRnd = 1.7;
+    % % end
+    % pwsRnd(i) = pwRnd;
 end
 
 disp("done")

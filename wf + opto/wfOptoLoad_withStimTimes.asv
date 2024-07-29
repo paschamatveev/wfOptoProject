@@ -1,7 +1,7 @@
 %% Script to analyze a new widefield+opto recording
 
-githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
-% githubDir= 'C:\GitHub\wf gui';
+% githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
+githubDir= 'C:\GitHub\wf gui';
 
 %% paths 
 
@@ -10,7 +10,7 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AL_0034'; 
+mn = 'AL_0033'; 
 td = '2024-07-25';
 ca_en = 1; % widefield
 
@@ -194,6 +194,8 @@ for i = 1:length(stimEnds)
 
     interp=zeros(samples,1);
     interp(:,1) = interp1(tt_exp,laser_exp,linspace(startpt,endpt,samples));
+    pwMax = max(interp(:,1));
+    pwRnd=round(pwsMean(i),1);
 
     lengthInterp(i) = length(interp(:,1));
     pwsMean(i) = mean(interp); %find the mean laserPower between the start and end over samples 
@@ -315,16 +317,22 @@ for i = 1:size(expStart)
     
     [flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger_exp, [1 4]);
     
-    writeNPY(stimStarts, fullfile(serverRoot_exp, 'laserOnTimes.npy'));
-    writeNPY(stimEnds, fullfile(serverRoot_exp, 'laserOffTimes.npy'));
-    writeNPY(pwsRnd, fullfile(serverRoot_exp, 'laserPowers.npy'));
-    writeNPY(galvoXPosexp, fullfile(serverRoot_exp, 'galvoXPositions.npy'));
-    writeNPY(galvoYPosexp, fullfile(serverRoot_exp, 'galvoYPositions.npy'));
-    writeNPY(flipsUp, fullfile(serverRoot_exp, 'cameraFrameTimes.npy'));
+    % writeNPY(stimStarts, fullfile(serverRoot_exp, 'laserOnTimes.npy'));
+    % writeNPY(stimEnds, fullfile(serverRoot_exp, 'laserOffTimes.npy'));
+    % writeNPY(pwsRnd, fullfile(serverRoot_exp, 'laserPowers.npy'));
+    % writeNPY(galvoXPosexp, fullfile(serverRoot_exp, 'galvoXPositions.npy'));
+    % writeNPY(galvoYPosexp, fullfile(serverRoot_exp, 'galvoYPositions.npy'));
+    % writeNPY(flipsUp, fullfile(serverRoot_exp, 'cameraFrameTimes.npy'));
 end
 
+%%
 
-
+i=2;
+indStart = find(t==expStart(i));
+indEnd = find(t==expEnd(i));
+t_exp = t(indStart:indEnd);
+cameraTrigger_exp = cameraTrigger(indStart:indEnd);
+[flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger_exp, [1 4]);
 
 
 

@@ -10,12 +10,13 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AL_0034'; 
-td = '2024-07-25';
+mn = 'AB_0032'; 
+td = '2024-07-24';
 ca_en = 1; % widefield
 
 serverRoot = expPath(mn, td, ca_en);
 
+expHz = [false,true];
 %% check timeline signals
 
 gx = readNPY(fullfile(serverRoot,'galvoX.raw.npy'));
@@ -145,8 +146,9 @@ sampPerSec= ts(2)/ts(2,2); % sample/set
 
 % test one exp at a time
 
-indStart = find(t==expStart(1));
-indEnd = find(t==expEnd(1));
+exp = 2;
+indStart = find(t==expStart(exp));
+indEnd = find(t==expEnd(exp));
 
 %isolate stimends and stimstarts for this exp
 sigName = 'lightCommand';
@@ -174,12 +176,13 @@ stimEnds = stimOffsets(gapDur(2:end)>stimlen);
 
 %storage for checking
 pwsMean=zeros(length(stimEnds),1); 
-pwsRnd=zeros(length(stimEnds),1);
+pwsHalved=zeros(length(stimEnds),1);
 samplesList=zeros(length(stimEnds),1);
 durList=zeros(length(stimEnds),1);
 lengthInterp = zeros(length(stimEnds),1);
 pwsMax=zeros(length(stimEnds),1); 
 pwsUnhalved=zeros(length(stimEnds),1); 
+pwsRnd = zeros(length(stimEnds),1); 
 
 
 % find the powers
@@ -198,51 +201,36 @@ for i = 1:length(stimEnds)
     interp=zeros(samples,1);
     interp(:,1) = interp1(tt_exp,laser_exp,linspace(startpt,endpt,samples));
     pwsMax(i) = max(interp(:,1));
-    pwsUnhalved(i) = round(pwsMax(i),1);
-    pwsRnd(i)=round(pwsMax(i)/2,1);
 
-    % lengthInterp(i) = length(interp(:,1));
-    % pwsMean(i) = mean(interp); %find the mean laserPower between the start and end over samples 
-    % pwRnd=round(pwsMean(i),1);
-    % % if pwRnd == 1.6
-    % %     pwRnd = 1.5;
-    % % end
-    % % if pwRnd == 1.8
-    % %     pwRnd = 1.7;
-    % % end
-    % pwsRnd(i) = pwRnd;
+    % check if the experiment is oscillating or not
+    % if it is oscillating - halve the max. if not, don't.
+    if expHz(exp) == true
+        pw = round(pwsMax(i)/2,1);
+        if pw == 0.2
+            pwsRnd(i) = 0.25;
+        elseif pw == 0.7
+            pwsRnd(i) = 0.75;
+        elseif pw == 1.7
+            pwsRnd(i) = 1.75;
+        else
+            pwsRnd(i) = pw;
+        end 
+    else
+        pw = round(pwsMax(i),1);
+        %hard code the right values
+        if pw == 0.2
+            pwsRnd(i) = 0.25;
+        elseif pw == 0.7
+            pwsRnd(i) = 0.75;
+        elseif pw == 1.7
+            pwsRnd(i) = 1.75;
+        else
+            pwsRnd(i) = pw;
+        end 
+    end
 end
 
 disp("done")
-
-
-% plot one interp at a time
-% interp=[];
-% pwMean=[];
-% pwRnd=[];
-% samplesList=[];
-% durList=[];
-% i=180;
-% startpt=stimStarts(i);
-% endpt=stimEnds(i);
-% 
-% dur = round(endpt-startpt,2);
-% if dur == 0.02 % putting a bandaid on a boat leak right here 
-%     dur = 0.025;
-% end
-% samples = (dur) * sampPerSec; %end sec - start sec * (samples/sec)
-% samplesList(i)=samples;
-% durList(i) = dur;
-% 
-% interp(:,1) = interp1(tt_exp,laser_exp,linspace(startpt,endpt,samples));
-% 
-% lengthInterp = length(interp(:,1));
-% pwMean = mean(interp); %find the mean laserPower between the start and end over samples 
-% pwRnd = round(pwMean,1);
-% plot(interp)
-% disp(pwRnd + " done")
-
-% writeNPY(pwsRnd, fullfile(serverRoot, 'laserPowers_test.npy'));
 
 %% separating exps + current laserPowers 40hz finding
 

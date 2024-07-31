@@ -10,13 +10,14 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AL_0033'; 
-td = '2024-07-19';
+mn = 'AB_0032'; 
+td = '2024-07-26';
 ca_en = 1; % widefield
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false,true];
+expHz = [false,false];
+%% process - not multiple exps, and without 40hz
 % check timeline signals
 
 gx = readNPY(fullfile(serverRoot,'galvoX.raw.npy'));
@@ -34,6 +35,15 @@ galvoYPos = round(interp1(t, gy, laserOn), 1);
 
 galvoPos = [galvoXPos, galvoYPos];
 
+% face camera timestamps
+cameraTrigger = readNPY(fullfile(serverRoot, 'cameraTrigger.raw.npy'));
+cameraTriggerTL = readNPY(fullfile(serverRoot, 'cameraTrigger.timestamps_Timeline.npy'));
+
+t =  interp1(cameraTriggerTL(:, 1), cameraTriggerTL(:, 2), 1:numel(cameraTrigger))';
+[flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger, [1 4]);
+
+%% write
+
 % write laser on, off, power, galvo
 writeNPY(laserOn, fullfile(serverRoot, 'laserOnTimes.npy'));
 writeNPY(laserOff, fullfile(serverRoot, 'laserOffTimes.npy'));
@@ -43,13 +53,6 @@ writeNPY(galvoYPos, fullfile(serverRoot, 'galvoYPositions.npy'));
 
 [positions, ~, posLabels] = unique(galvoPos, 'rows');
 [powers, ~, powerLabels] = unique(laserPower);
-
-% face camera timestamps
-cameraTrigger = readNPY(fullfile(serverRoot, 'cameraTrigger.raw.npy'));
-cameraTriggerTL = readNPY(fullfile(serverRoot, 'cameraTrigger.timestamps_Timeline.npy'));
-
-t =  interp1(cameraTriggerTL(:, 1), cameraTriggerTL(:, 2), 1:numel(cameraTrigger))';
-[flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger, [1 4]);
 
 % write cam
 writeNPY(flipsUp, fullfile(serverRoot, 'cameraFrameTimes.npy'));
@@ -185,10 +188,10 @@ for i = 1:size(expStart)
             pw = round(pwsMax(j),1);
             pwsRnd(j) = pw;
         end
-    
+    end
     %get galvos, flips
     galvoXPosexp = round(interp1(t_exp, gx_exp, stimStarts), 1);
-    galvoYPosexp = round(interp1(t_exp, gy_exp, stimEnds), 1);
+    galvoYPosexp = round(interp1(t_exp, gy_exp, stimStarts), 1);
     
     galvoPos_exp = [galvoXPosexp, galvoYPosexp];
     
@@ -200,7 +203,6 @@ for i = 1:size(expStart)
     writeNPY(galvoXPosexp, fullfile(serverRoot_exp, 'galvoXPositions.npy'));
     writeNPY(galvoYPosexp, fullfile(serverRoot_exp, 'galvoYPositions.npy'));
     writeNPY(flipsUp_exp, fullfile(serverRoot_exp, 'cameraFrameTimes.npy')); %might be broken
-    end
 end
 
 %% testing ground to find pows and lengths

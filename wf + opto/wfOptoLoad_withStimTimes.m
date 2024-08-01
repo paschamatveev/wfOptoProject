@@ -10,9 +10,9 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AB_0032'; 
-td = '2024-06-28';
-ca_en = 3; % widefield
+mn = 'AL_0033'; 
+td = '2024-06-27';
+ca_en = 1; % widefield
 
 serverRoot = expPath(mn, td, ca_en);
 
@@ -42,7 +42,7 @@ cameraTriggerTL = readNPY(fullfile(serverRoot, 'cameraTrigger.timestamps_Timelin
 t =  interp1(cameraTriggerTL(:, 1), cameraTriggerTL(:, 2), 1:numel(cameraTrigger))';
 [flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger, [1 4]);
 
-%% process - not multiple exps, with 40hz
+%% process - saves all to one folder, and depends on you hard-coding what experiments are 40hz and which are not
 
 gx = readNPY(fullfile(serverRoot,'galvoX.raw.npy'));
 gy = readNPY(fullfile(serverRoot,'galvoY.raw.npy'));
@@ -79,22 +79,27 @@ pwRnd = zeros(length(stimEnds),1);
 for i = 1:length(stimEnds)
     startpt=stimStarts(i);
     endpt=stimEnds(i);
-
+    
     dur = round(endpt-startpt,2);
     if dur == 0.02 % putting a bandaid on a boat leak right here 
         dur = 0.025;
     end
-    samples = (dur) * sampPerSec; %end sec - start sec * (samples/sec)
-    interp=zeros(samples,1);
-    interp(:,1) = interp1(tt,laser,linspace(startpt,endpt,samples));
-    pwsMax = max(interp(:,1));
-    
-    for j = 1:length(expStart)
-        if stimEnds(i) > expStart(j) && stimEnds(i) < expEnd(j)
-            if expHz(j) == true
-                pwRnd(i) = round(pwsMax/2,1);
-            else 
-                pwRnd(i) = round(pwsMax,1);
+
+    if dur < 0.025
+        continue
+    else
+        samples = (dur) * sampPerSec; %end sec - start sec * (samples/sec)
+        interp=zeros(samples,1);
+        interp(:,1) = interp1(tt,laser,linspace(startpt,endpt,samples));
+        pwsMax = max(interp(:,1));
+        
+        for j = 1:length(expStart)
+            if stimEnds(i) > expStart(j) && stimEnds(i) < expEnd(j)
+                if expHz(j) == true
+                    pwRnd(i) = round(pwsMax/2,1);
+                else 
+                    pwRnd(i) = round(pwsMax,1);
+                end
             end
         end
     end
@@ -124,53 +129,16 @@ writeNPY(galvoYPos, fullfile(serverRoot, 'galvoYPositions.npy'));
 
 [positions, ~, posLabels] = unique(galvoPos, 'rows');
 [powers, ~, powerLabels] = unique(pwRnd);
-
+ 
 % write cam
 writeNPY(flipsUp, fullfile(serverRoot, 'cameraFrameTimes.npy'));
-
-%% find exps
-
-expTimes = readNPY(fullfile(serverRoot, 'expStartStop.timestamps_Timeline.npy'));
-expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
-[times,expStart,expEnd] = schmittTimes(t,expStartStop,[2 4.5]); %i think these are in seconds?
-
-%% save galvos, powers, etc for multiple exps
-% CURRENTLY ONLY WORKS FOR ONE DURATION. will integrate multiple durations
-% once i figure that out!
-
-for i = 1:size(expStart)
-    serverRoot_exp = expPath(mn, td, i+1);
-    
-    %convert to samples 
-    indStart = find(t==expStart(i));
-    indEnd = find(t==expEnd(i));
-    
-    laser_exp = laser(indStart:indEnd); %expStart and expStop are in SECONDS. i need the INDEX where that SECOND happens. 
-    t_exp = t(indStart:indEnd);
-    gx_exp = gx(indStart:indEnd);
-    gy_exp = gy(indStart:indEnd);
-    cameraTrigger_exp = cameraTrigger(indStart:indEnd);
-    
-    [~, laserOnexp, laserOffexp] = schmittTimes(t_exp, laser_exp, [0.025 0.075]);
-    laserPowerexp = round(interp1(t_exp, laser_exp, laserOnexp+0.005), 1); % interp halfway through stim when laser has been on
-    galvoXPosexp = round(interp1(t_exp, gx_exp, laserOnexp), 1);
-    galvoYPosexp = round(interp1(t_exp, gy_exp, laserOnexp), 1);
-    
-    galvoPos_exp = [galvoXPosexp, galvoYPosexp];
-
-    [flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger_exp, [1 4]);
-
-    writeNPY(laserOnexp, fullfile(serverRoot_exp, 'laserOnTimes.npy'));
-    writeNPY(laserOffexp, fullfile(serverRoot_exp, 'laserOffTimes.npy'));
-    writeNPY(laserPowerexp, fullfile(serverRoot_exp, 'laserPowers.npy'));
-    writeNPY(galvoXPosexp, fullfile(serverRoot_exp, 'galvoXPositions.npy'));
-    writeNPY(galvoYPosexp, fullfile(serverRoot_exp, 'galvoYPositions.npy'));
-    writeNPY(flipsUp, fullfile(serverRoot_exp, 'cameraFrameTimes.npy'));
-end
 
 
 %% separating exps + laser powers + saving into different folders
 
+expTimes = readNPY(fullfile(serverRoot, 'expStartStop.timestamps_Timeline.npy'));
+expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
+[times,expStart,expEnd] = schmittTimes(t,expStartStop,[2 4.5]); %i think these are in seconds?
 sampPerSec= ts(2)/ts(2,2); % sample/set
 
 %prep to find laser powers
@@ -255,7 +223,7 @@ for i = 1:size(expStart)
     writeNPY(flipsUp_exp, fullfile(serverRoot_exp, 'cameraFrameTimes.npy')); %might be broken
 end
 
-%% testing ground to find pows and lengths
+%% TESTING GROUND
 %older code from above
 t = tsToT(ts, numel(laser));
 

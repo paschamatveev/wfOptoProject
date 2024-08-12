@@ -1,4 +1,4 @@
-githubDir = 'C:\Users\anna\Repositories';
+githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
 
 addpath(genpath(fullfile(githubDir, 'spikes')))
 addpath(genpath(fullfile(githubDir, 'npy-matlab')))

@@ -10,13 +10,13 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AL_0034'; 
-td = '2024-07-29';
+mn = 'ZYE_0077'; 
+td = '2024-07-22';
 ca_en = 1; % widefieldN
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false,true];
+expHz = [false,false,false];
 %% process - not multiple exps, and without 40hz
 % check timeline signals
 
@@ -224,18 +224,22 @@ for i = 1:size(expStart)
 end
 
 %% TESTING GROUND
-%older code from above
 t = tsToT(ts, numel(laser));
+expTimes = readNPY(fullfile(serverRoot, 'expStartStop.timestamps_Timeline.npy'));
+expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
+[times,expStart,expEnd] = schmittTimes(t,expStartStop,[2 4.5]); %i think these are in seconds?
 
 %find samples per sec
 sampPerSec= ts(2)/ts(2,2); % sample/set
 
 % test one exp at a time
 
-exp = 2;
+exp = 3;
 indStart = find(t==expStart(exp));
 indEnd = find(t==expEnd(exp));
 
+chrono = readNPY(fullfile(serverRoot, 'chrono.raw.npy'));
+%%
 %isolate stimends and stimstarts for this exp
 sigName = 'lightCommand';
 [tt, v] = getTLanalog(mn, td, ca_en, sigName);
@@ -299,7 +303,7 @@ end
 
 disp("done")
 
-
+%%
 h(1)=plot(tt,v,'cyan');
 hold on
 h(2)=scatter(stimTimes,ones(size(stimTimes)) + 1,'red');

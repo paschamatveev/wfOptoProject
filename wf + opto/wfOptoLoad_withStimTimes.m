@@ -1,7 +1,7 @@
 %% Script to analyze a new widefield+opto recording
 
-% githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
-githubDir= 'C:\GitHub\wf gui';
+githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
+% githubDir= 'C:\GitHub\wf gui';
 
 %% get galvos, laserpowers, etc as before - assuming step function, and putting all in #1 folder
 
@@ -16,7 +16,7 @@ ca_en = 1; % widefieldN
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false,true,false,false];
+expHz = [false,true,false,false,false]; %calib, stimduration w 40hz, fail, fail, stimduration with step
 %% process - not multiple exps, and without 40hz
 % check timeline signals
 
@@ -240,9 +240,11 @@ expEndInd = zeros(1, length(expEnd));
 for i = 1:length(expStart)
     sec = expEnd(i)-expStart(i);
     trs = sec/trialsec(i);
-    trEnd(i+1) = round(trs - 1); %this minus one is hardcoding a fix to some poor rounding
+    trEnd(i+1) = round(trs - 1) + trEnd(i); %this minus one is hardcoding a fix to some poor rounding
 end
 
+% writeNPY(trEnd,fullfile(serverRoot,'expTrials.npy'))
+%% write 
 for i = 1:length(expStart)
     serverRoot_exp = expPath(mn, td, i+1);
     startTr=trEnd(i);

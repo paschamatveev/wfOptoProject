@@ -1,7 +1,7 @@
 %% Script to analyze a new widefield+opto recording
 
-githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
-% githubDir= 'C:\GitHub\wf gui';
+% githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
+githubDir= 'C:\GitHub\wf gui';
 
 %% get galvos, laserpowers, etc as before - assuming step function, and putting all in #1 folder
 
@@ -234,13 +234,26 @@ sampPerSec= ts(2)/ts(2,2); % sample/set
 
 % test one exp at a time
 trialsec=[2,4,4,4];
-trEnd = zeros(1,length(expStart));
+trEnd = [1,0,0,0,0];
 expStartInd = zeros(1, length(expStart));
 expEndInd = zeros(1, length(expEnd));
 for i = 1:length(expStart)
     sec = expEnd(i)-expStart(i);
     trs = sec/trialsec(i);
-    trEnd(i) = round(trs - 1); %this minus one is hardcoding a fix to some poor rounding
+    trEnd(i+1) = round(trs - 1); %this minus one is hardcoding a fix to some poor rounding
+end
+
+for i = 1:length(expStart)
+    serverRoot_exp = expPath(mn, td, i+1);
+    startTr=trEnd(i);
+    endTr = trEnd(i)+ trEnd(i+1);
+
+    writeNPY(stimStarts(startTr:endTr), fullfile(serverRoot_exp, 'laserOnTimes.npy'));
+    writeNPY(stimEnds(startTr:endTr), fullfile(serverRoot_exp, 'laserOffTimes.npy'));
+    writeNPY(pwsRnd(startTr:endTr), fullfile(serverRoot_exp, 'laserPowers.npy'));
+    writeNPY(galvoXPosexp(startTr:endTr), fullfile(serverRoot_exp, 'galvoXPositions.npy'));
+    writeNPY(galvoYPosexp(startTr:endTr), fullfile(serverRoot_exp, 'galvoYPositions.npy'));
+
 end
 %%
 %isolate stimends and stimstarts for this exp

@@ -16,7 +16,7 @@ ca_en = 1; % widefieldN
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false,true,false,false];
+expHz = [false,true,false];
 %% process - not multiple exps, and without 40hz
 % check timeline signals
 
@@ -233,15 +233,15 @@ expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
 sampPerSec= ts(2)/ts(2,2); % sample/set
 
 % test one exp at a time
-trialsec=[2,4,4,4];
-trEnd = zeros(1,length(expStart));
+trialsec=2;
 expStartInd = zeros(1, length(expStart));
 expEndInd = zeros(1, length(expEnd));
 for i = 1:length(expStart)
     sec = expEnd(i)-expStart(i);
-    trs = sec/trialsec(i);
-    trEnd(i) = round(trs - 1); %this minus one is hardcoding a fix to some poor rounding
+    trs = sec/trialsec;
+    
 end
+
 %%
 %isolate stimends and stimstarts for this exp
 sigName = 'lightCommand';

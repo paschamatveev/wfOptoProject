@@ -16,8 +16,8 @@ ca_en = 1; % widefieldN
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false,true,false,false,false]; %calib, stimduration w 40hz, fail, fail, stimduration with step
-%% process - not multiple exps, and without 40hz
+expHz = [false false false]; %calib, stimduration w 40hz, fail, fail, stimduration with step
+%% process - the original way, not multiple exps, and WITHOUT 40hz
 % check timeline signals
 
 gx = readNPY(fullfile(serverRoot,'galvoX.raw.npy'));
@@ -42,19 +42,36 @@ cameraTriggerTL = readNPY(fullfile(serverRoot, 'cameraTrigger.timestamps_Timelin
 t =  interp1(cameraTriggerTL(:, 1), cameraTriggerTL(:, 2), 1:numel(cameraTrigger))';
 [flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger, [1 4]);
 
+%% write
+
+% write laser on, off, power, galvo
+writeNPY(laserPower, fullfile(serverRoot, 'laserPowers.npy'));
+writeNPY(galvoXPos, fullfile(serverRoot, 'galvoXPositions.npy'));
+writeNPY(galvoYPos, fullfile(serverRoot, 'galvoYPositions.npy'));
+writeNPY(laserOn, fullfile(serverRoot,'laserOnTimes.npy'));
+writeNPY(laserOff,fullfile(serverRoot,'laserOffTimes.npy'));
+
+[positions, ~, posLabels] = unique(galvoPos, 'rows');
+[powers, ~, powerLabels] = unique(laserPower);
+ 
+% write cam
+writeNPY(flipsUp, fullfile(serverRoot, 'cameraFrameTimes.npy'));
+
 %% process - saves all to one folder, and depends on you hard-coding what experiments are 40hz and which are not
 
+%read in raw signals 
 gx = readNPY(fullfile(serverRoot,'galvoX.raw.npy'));
 gy = readNPY(fullfile(serverRoot,'galvoY.raw.npy'));
 laser = readNPY(fullfile(serverRoot,'lightCommand.raw.npy'));
 ts = readNPY(fullfile(serverRoot,'lightCommand.timestamps_Timeline.npy'));
-t = tsToT(ts, numel(laser));sampPerSec= ts(2)/ts(2,2); % sample/sec
+expTimes = readNPY(fullfile(serverRoot, 'expStartStop.timestamps_Timeline.npy')); 
+expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy')); 
 
-expTimes = readNPY(fullfile(serverRoot, 'expStartStop.timestamps_Timeline.npy'));
-expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
-[times,expStart,expEnd] = schmittTimes(t,expStartStop,[2 4.5]); 
+t = tsToT(ts, numel(laser)); %seconds timing
+sampPerSec= ts(2)/ts(2,2); % sample/sec 
+[times,expStart,expEnd] = schmittTimes(t,expStartStop,[2 4.5]); %find times in s of exp start/stop
 
-% finding laser ons and offs for a 40hz signal
+% finding laser ons and offs times for a 40hz signal
 sigName = 'lightCommand';
 [tt, v] = getTLanalog(mn, td, ca_en, sigName);
 
@@ -68,34 +85,35 @@ stimlen=0.05;
 stimTimes = tt(v(2:end)>threshold & v(1:end-1)<=threshold); %find times where light is on, has to be at least 2V
 stimOffsets = tt(v(2:end)<threshold & v(1:end-1)>=threshold);
 
-ds = find(diff([0;stimTimes])>stimlen); % find indeces where there is a stim, time between (i think) has to be greater than .05
+ds = find(diff([0;stimTimes])>stimlen); % find indeces where there is a stim, time between has to be greater than .05
 stimStarts = stimTimes(ds); %ds
 
 gapDur = [stimTimes; max(tt)]-[0;stimOffsets];
 stimEnds = stimOffsets(gapDur(2:end)>stimlen);
 
+%find the powers for each stim
 pwRnd = zeros(length(stimEnds),1); 
-
 for i = 1:length(stimEnds)
     startpt=stimStarts(i);
     endpt=stimEnds(i);
     
+    %find duration
     dur = round(endpt-startpt,2);
-    if dur == 0.02 % putting a bandaid on a boat leak right here 
+    if dur == 0.02 
         dur = 0.025;
     end
 
-    if dur < 0.025
+    if dur < 0.025 %if it finds a duration that is less than the minimum (0.025), it skips
         continue
     else
         samples = (dur) * sampPerSec; %end sec - start sec * (samples/sec)
-        interp=zeros(samples,1);
-        interp(:,1) = interp1(tt,laser,linspace(startpt,endpt,samples));
-        pwsMax = max(interp(:,1));
+        interp=zeros(samples,1); 
+        interp(:,1) = interp1(tt,laser,linspace(startpt,endpt,samples)); %find the laser values 
+        pwsMax = max(interp(:,1)); % find max of the laser                  between the start and end sec
         
         for j = 1:length(expStart)
-            if stimEnds(i) > expStart(j) && stimEnds(i) < expEnd(j)
-                if expHz(j) == true
+            if stimEnds(i) > expStart(j) && stimEnds(i) < expEnd(j) %if its a 40hz exp, divide by 2. if not, 
+                if expHz(j) == true                                 % its a step, so the max is the right value
                     pwRnd(i) = round(pwsMax/2,1);
                 else 
                     pwRnd(i) = round(pwsMax,1);
@@ -105,7 +123,7 @@ for i = 1:length(stimEnds)
     end
 end
 
-galvoXPos = round(interp1(t, gx, stimStarts), 1);
+galvoXPos = round(interp1(t, gx, stimStarts), 1); 
 galvoYPos = round(interp1(t, gy, stimStarts), 1);
 
 galvoPos = [galvoXPos, galvoYPos];
@@ -135,6 +153,7 @@ writeNPY(flipsUp, fullfile(serverRoot, 'cameraFrameTimes.npy'));
 
 
 %% separating exps + laser powers + saving into different folders
+% this one is quite broken
 
 expTimes = readNPY(fullfile(serverRoot, 'expStartStop.timestamps_Timeline.npy'));
 expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
@@ -233,28 +252,34 @@ expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
 sampPerSec= ts(2)/ts(2,2); % sample/set
 
 % test one exp at a time
-trialsec=[2,4,4,4];
-trEnd = [1,0,0,0,0];
+trialsec=[2,4,4,4]; %setting up how many sec per trial per exp
+trEnd = [1,0,0,0,0]; %premaking an array where to put the number of the last trial for each exp
 expStartInd = zeros(1, length(expStart));
 expEndInd = zeros(1, length(expEnd));
 for i = 1:length(expStart)
-    sec = expEnd(i)-expStart(i);
-    trs = sec/trialsec(i);
-    trEnd(i+1) = round(trs - 1) + trEnd(i); %this minus one is hardcoding a fix to some poor rounding
-end
+    sec = expEnd(i)-expStart(i); %find the number of seconds in the exp
+    trs = sec/trialsec(i); %find how many trial in the exp
+    trEnd(i+1) = round(trs - 1) + trEnd(i); %find number of the last trial in the exp across all
+end                                            % the trials that exist 
 
 % writeNPY(trEnd,fullfile(serverRoot,'expTrials.npy'))
-%% write 
+%% write the appropriate stimstarts, ends, pws, galvos for each exp
+% we find activity from the stimstarts/ends, which are in seconds, but are
+% the length of the number of trials
+% so can use the trial numbers to find the appropriate starts, ends, pws 
 for i = 1:length(expStart)
     serverRoot_exp = expPath(mn, td, i+1);
     startTr=trEnd(i);
     endTr = trEnd(i)+ trEnd(i+1);
-
-    writeNPY(stimStarts(startTr:endTr), fullfile(serverRoot_exp, 'laserOnTimes.npy'));
-    writeNPY(stimEnds(startTr:endTr), fullfile(serverRoot_exp, 'laserOffTimes.npy'));
-    writeNPY(pwsRnd(startTr:endTr), fullfile(serverRoot_exp, 'laserPowers.npy'));
-    writeNPY(galvoXPosexp(startTr:endTr), fullfile(serverRoot_exp, 'galvoXPositions.npy'));
-    writeNPY(galvoYPosexp(startTr:endTr), fullfile(serverRoot_exp, 'galvoYPositions.npy'));
+    disp(i)
+    disp(startTr)
+    disp(endTr)
+    disp(serverRoot_exp)
+    % writeNPY(stimStarts(startTr:endTr), fullfile(serverRoot_exp, 'laserOnTimes.npy'));
+    % writeNPY(stimEnds(startTr:endTr), fullfile(serverRoot_exp, 'laserOffTimes.npy'));
+    % writeNPY(pwsRnd(startTr:endTr), fullfile(serverRoot_exp, 'laserPowers.npy'));
+    % writeNPY(galvoXPosexp(startTr:endTr), fullfile(serverRoot_exp, 'galvoXPositions.npy'));
+    % writeNPY(galvoYPosexp(startTr:endTr), fullfile(serverRoot_exp, 'galvoYPositions.npy'));
 
 end
 %%

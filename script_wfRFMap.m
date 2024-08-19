@@ -7,9 +7,9 @@ addpath(genpath(fullfile(githubDir, 'Pipelines')))
 
 %%
 
-mn = 'AL_0034';
-td = '2024-08-13';
-en = 1;
+mn = 'AL_0033';
+td = '2024-08-18';
+en = 4;
 serverRoot = expPath(mn, td, en);
 %% exp numbers: at least the camera folder and the stimulus folder
 success = matchBlocks2Timeline(mn,td,[1 4], []);

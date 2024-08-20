@@ -10,13 +10,13 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AB_0032'; 
-td = '2024-08-13';
+mn = 'AL_0034'; 
+td = '2024-08-20';
 ca_en = 1; % widefieldN
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false false false]; %calib, stimduration w 40hz, fail, fail, stimduration with step
+expHz = [false true]; %calib, stimduration w 40hz, fail, fail, stimduration with step
 %% process - the original way, not multiple exps, and WITHOUT 40hz
 % check timeline signals
 
@@ -252,8 +252,8 @@ expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
 sampPerSec= ts(2)/ts(2,2); % sample/set
 
 % test one exp at a time
-trialsec=[2,4,4,4]; %setting up how many sec per trial per exp
-trEnd = [1,0,0,0,0]; %premaking an array where to put the number of the last trial for each exp
+trialsec=[2,4]; %setting up how many sec per trial per exp
+trEnd = [1,0]; %premaking an array where to put the number of the last trial for each exp
 expStartInd = zeros(1, length(expStart));
 expEndInd = zeros(1, length(expEnd));
 for i = 1:length(expStart)
@@ -262,7 +262,7 @@ for i = 1:length(expStart)
     trEnd(i+1) = round(trs - 1) + trEnd(i); %find number of the last trial in the exp across all
 end                                            % the trials that exist 
 
-% writeNPY(trEnd,fullfile(serverRoot,'expTrials.npy'))
+writeNPY(trEnd,fullfile(serverRoot,'expTrials.npy'))
 %% write the appropriate stimstarts, ends, pws, galvos for each exp
 % we find activity from the stimstarts/ends, which are in seconds, but are
 % the length of the number of trials

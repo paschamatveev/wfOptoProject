@@ -1,4 +1,5 @@
-githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
+%githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
+githubDir= 'C:\GitHub\wf gui';
 
 addpath(genpath(fullfile(githubDir, 'spikes')))
 addpath(genpath(fullfile(githubDir, 'npy-matlab')))
@@ -8,7 +9,7 @@ addpath(genpath(fullfile(githubDir, 'Pipelines')))
 %%
 
 mn = 'AL_0035';
-td = '2024-08-16';
+td = '2024-08-22';
 en = 4;
 serverRoot = expPath(mn, td, en);
 %% exp numbers: at least the camera folder and the stimulus folder

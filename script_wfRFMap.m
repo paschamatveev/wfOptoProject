@@ -8,8 +8,8 @@ addpath(genpath(fullfile(githubDir, 'Pipelines')))
 
 %%
 
-mn = 'AL_0035';
-td = '2024-08-22';
+mn = 'ZYE_0088';
+td = '2024-08-23';
 en = 4;
 serverRoot = expPath(mn, td, en);
 %% exp numbers: at least the camera folder and the stimulus folder

@@ -1,7 +1,7 @@
 %% Script to analyze a new widefield+opto recording
 
-% githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
-githubDir= 'C:\GitHub\wf gui';
+githubDir = 'C:\Users\nadia\Documents\GitHub\wf gui';
+% githubDir= 'C:\GitHub\wf gui';
 
 %% get galvos, laserpowers, etc as before - assuming step function, and putting all in #1 folder
 
@@ -10,13 +10,13 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'ZYE_0088'; 
-td = '2024-08-23';
+mn = 'AL_0034'; 
+td = '2024-08-26';
 ca_en = 1; % widefieldN
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false false false]; %calib, stimduration w 40hz, fail, fail, stimduration with step
+expHz = [false true]; %calib, stimduration w 40hz, fail, fail, stimduration with step
 %% process - the original way, not multiple exps, and WITHOUT 40hz
 % check timeline signals
 

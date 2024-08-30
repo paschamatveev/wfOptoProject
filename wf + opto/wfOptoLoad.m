@@ -10,13 +10,13 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AL_0034'; 
-td = '2024-08-27';
+mn = 'AL_0035'; 
+td = '2024-08-29';
 ca_en = 1; % widefieldN
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false false]; %calib, stimduration w 40hz, fail, fail, stimduration with step
+expHz = [false false false]; %
 %% process - the original way, not multiple exps, and WITHOUT 40hz
 % check timeline signals
 
@@ -41,6 +41,11 @@ cameraTriggerTL = readNPY(fullfile(serverRoot, 'cameraTrigger.timestamps_Timelin
 
 t =  interp1(cameraTriggerTL(:, 1), cameraTriggerTL(:, 2), 1:numel(cameraTrigger))';
 [flipTimes, flipsUp, flipsDown] = schmittTimes(t, cameraTrigger, [1 4]);
+
+expTimes = readNPY(fullfile(serverRoot, 'expStartStop.timestamps_Timeline.npy'));
+expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
+[times,expStart,expEnd] = schmittTimes(t,expStartStop,[.5 .5]); %i think these are in seconds?
+sampPerSec= ts(2)/ts(2,2); % sample/set
 
 %% write
 
@@ -154,12 +159,10 @@ writeNPY(flipsUp, fullfile(serverRoot, 'cameraFrameTimes.npy'));
 
 %% separating exps + laser powers + saving into different folders
 % this one is quite broken
-
 expTimes = readNPY(fullfile(serverRoot, 'expStartStop.timestamps_Timeline.npy'));
 expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
 [times,expStart,expEnd] = schmittTimes(t,expStartStop,[2 4.5]); %i think these are in seconds?
 sampPerSec= ts(2)/ts(2,2); % sample/set
-
 %prep to find laser powers
 sigName = 'lightCommand';
 [tt, v] = getTLanalog(mn, td, ca_en, sigName);

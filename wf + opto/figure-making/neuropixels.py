@@ -13,10 +13,10 @@ import shutil
 import sys
 import warnings
 
-sys.path.append('C://Users/anna/Repositories/Pipelines/ephys/qc')
-# import single_units_wrapper as qc
-sys.path.append('C://Users/anna/Repositories/slidingRefractory/python')
-# import slidingRP as rpqc
+sys.path.append('C:/Users/nadia/Documents/GitHub/wf gui/Pipelines/ephys/qc')
+import single_units_wrapper as qc
+sys.path.append('C:/Users/nadia/Documents/GitHub/slidingRefractory/python')
+import slidingRP as rpqc
 
 def copy_server_data(server_dir, local_dir, mn, file_lim_bytes=1e9, verbose=0):
     """
@@ -273,7 +273,7 @@ class RainierData:
         except:
             pass
 
-    def separate_spikes(self):
+    def separate_spikes(self,st,sc):
         """
         Given equal arrays of [spiketimes] and [spikeclusters]
         Find which spike times belong to each unique neuron (cluster)
@@ -281,8 +281,10 @@ class RainierData:
         Uses spike_times and spike_clusters from loaded npyps
         Assigns separated spikes to self.neurons and self.spikes
         """
-        spk_time = self.npys['spike_times']
-        spk_clus = self.npys['spike_clusters']
+        # spk_time = self.npys['spike_times']
+        # spk_clus = self.npys['spike_clusters']
+        spk_time=st
+        spk_clus=sc
 
         if len(spk_time) != len(spk_clus):
             raise ValueError('spike times and clusters have uneven lengths. '
@@ -299,6 +301,7 @@ class RainierData:
         self.neurons = neurons
         self.spikes = spks / 3e4  # sample rate, may want to set this
         # programmatically in future
+        return self.neurons, self.spikes
 
     def bin_spikes(self, bins, binsize_s, spks=None, set_self_matrix=False):
         """

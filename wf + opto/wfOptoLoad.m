@@ -10,13 +10,13 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AL_0034'; 
-td = '2024-09-02';
+mn = 'AL_0033'; 
+td = '2024-09-09';
 ca_en = 1; % widefieldN
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false true]; %
+expHz = [false false]; %
 %% process - the original way, not multiple exps, and WITHOUT 40hz
 % check timeline signals
 

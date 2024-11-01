@@ -23,7 +23,8 @@ class wfOpto:
         self.frameTimes = np.squeeze(np.load(self.timeFile))[::2] # every other frame - we want blue only
         self.svdTemp = np.load(serverPath / 'corr/svdTemporalComponents_corr.npy')
         self.svdSpat = np.load(serverPath / 'blue/svdSpatialComponents.npy')
-        self.svdSpatFull = self.svdSpat[:,:,:500]
+        self.svdSpatFull = self.svdSpat[:,:,:50]
+        self.svdTemp=self.svdTemp[:,:50]
         
         self.meanImage = np.load(serverPath / 'blue/meanImage.npy')
         self.laserOn = np.squeeze(np.load(serverPath / 'laserOnTimes.npy'))

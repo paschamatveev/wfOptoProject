@@ -10,13 +10,13 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = ['AL_0034']; 
-td = ['2024-11-17'];
+mn = ['AL_0035']; 
+td = ['2024-12-05'];
 ca_en = 1; % widefield
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false false]; %
+expHz = [false false false]; %
 %% process - the original way, not multiple exps, and WITHOUT 40hz
 % check timeline signals
 
@@ -363,3 +363,25 @@ title("stim threshold " + threshold + " stim len " + stimlen + ' original code')
 % xlim([200,250])
 % ylim([2.8,3])
 saveas(gcf,'stimtimes15.jpg')
+
+%% linearity test
+
+linTestExpNum = 2;
+
+block = getBlockFile(mn,td,linTestExpNum);
+
+stimContrast = [block.paramsValues.Contrast];
+stimDur = [block.paramsValues.Duration];
+% stimOnTimes = block.events.stim_onTimes;
+
+expRoot = expPath(mn, td, linTestExpNum);
+
+pdTimes = readNPY(fullfile(expRoot, 'photodiode.timestamps_Timeline.npy'));
+stimOnTimes = pdTimes(1:2:end);
+stimOffTimes = pdTimes(2:2:end); 
+
+% save stimuli info
+writeNPY(stimContrast, fullfile(expRoot, 'linTestContrasts.npy'));
+writeNPY(stimDur, fullfile(expRoot, 'linTestDurations.npy'))
+writeNPY(stimOnTimes, fullfile(expRoot, 'linTestOnTimes.npy'));
+writeNPY(stimOffTimes, fullfile(expRoot, 'linTestOffTimes.npy'));

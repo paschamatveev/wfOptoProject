@@ -10,13 +10,15 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = ['AL_0035']; 
-td = ['2024-12-05'];
+mn = 'AL_0033'; 
+td = '2024-12-11';
 ca_en = 1; % widefield
 
 serverRoot = expPath(mn, td, ca_en);
 
-expHz = [false false false]; %
+expHz = [false true true true]; %
+
+
 %% process - the original way, not multiple exps, and WITHOUT 40hz
 % check timeline signals
 
@@ -115,16 +117,17 @@ for i = 1:length(stimEnds)
         interp=zeros(samples,1); 
         interp(:,1) = interp1(tt,laser,linspace(startpt,endpt,samples)); %find the laser values 
         pwsMax = max(interp(:,1)); % find max of the laser                  between the start and end sec
-        
-        for j = 1:length(expStart)
-            if stimEnds(i) > expStart(j) && stimEnds(i) < expEnd(j) %if its a 40hz exp, divide by 2. if not, 
-                if expHz(j) == true                                 % its a step, so the max is the right value
-                    pwRnd(i) = round(pwsMax/2,1);
-                else 
-                    pwRnd(i) = round(pwsMax,1);
-                end
-            end
-        end
+        pwRnd(i) = round(pwsMax/2,1);
+
+        % for j = 1:length(expStart)
+        %     if stimEnds(i) > expStart(j) && stimEnds(i) < expEnd(j) %if its a 40hz exp, divide by 2. if not, 
+        %         if expHz(j) == true                                 % its a step, so the max is the right value
+        %             pwRnd(i) = round(pwsMax/2,1);
+        %         else 
+        %             pwRnd(i) = round(pwsMax,1);
+        %         end
+        %     end
+        % end
     end
 end
 
@@ -369,6 +372,7 @@ saveas(gcf,'stimtimes15.jpg')
 linTestExpNum = 2;
 
 block = getBlockFile(mn,td,linTestExpNum);
+success = matchBlocks2Timeline(mn,td, [1 2],[]); %[main exp folder, visresp folder]
 
 stimContrast = [block.paramsValues.Contrast];
 stimDur = [block.paramsValues.Duration];
@@ -376,7 +380,7 @@ stimDur = [block.paramsValues.Duration];
 
 expRoot = expPath(mn, td, linTestExpNum);
 
-pdTimes = readNPY(fullfile(expRoot, 'photodiode.timestamps_Timeline.npy'));
+pdTimes = readNPY(fullfile(expRoot, 'photodiodeFlips.timestamps.npy'));
 stimOnTimes = pdTimes(1:2:end);
 stimOffTimes = pdTimes(2:2:end); 
 

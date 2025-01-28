@@ -10,8 +10,8 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AL_0035'; 
-td = '2025-01-19';
+mn = 'AL_0033'; 
+td = '2025-01-21';
 ca_en = 1; % widefield
 
 serverRoot = expPath(mn, td, ca_en);
@@ -60,7 +60,7 @@ writeNPY(laserOff,fullfile(serverRoot,'laserOffTimes.npy'));
 
 [positions, ~, posLabels] = unique(galvoPos, 'rows');
 [powers, ~, powerLabels] = unique(laserPower);
- 
+   
 % write cam
 writeNPY(flipsUp, fullfile(serverRoot, 'cameraFrameTimes.npy'));
 

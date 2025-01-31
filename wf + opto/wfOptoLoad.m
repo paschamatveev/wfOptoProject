@@ -10,8 +10,8 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AL_0033'; 
-td = '2025-01-21';
+mn = 'AL_0035'; 
+td = '2025-01-25';
 ca_en = 1; % widefield
 
 serverRoot = expPath(mn, td, ca_en);

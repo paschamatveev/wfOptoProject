@@ -11,7 +11,7 @@ addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
 mn = 'AL_0035'; 
-td = '2025-01-25';
+td = '2025-01-08';
 ca_en = 1; % widefield
 
 serverRoot = expPath(mn, td, ca_en);
@@ -47,6 +47,7 @@ t =  interp1(cameraTriggerTL(:, 1), cameraTriggerTL(:, 2), 1:numel(cameraTrigger
 expTimes = readNPY(fullfile(serverRoot, 'expStartStop.timestamps_Timeline.npy'));
 expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
 [times,expStart,expEnd] = schmittTimes(t,expStartStop,[.5 .5]); %i think these are in seconds?
+expStartStop = reshape(times,[length(times)/2,2]); % reshapes into a x,2 array, x being the number of exps
 sampPerSec= ts(2)/ts(2,2); % sample/set
 
 %% write
@@ -57,6 +58,7 @@ writeNPY(galvoXPos, fullfile(serverRoot, 'galvoXPositions.npy'));
 writeNPY(galvoYPos, fullfile(serverRoot, 'galvoYPositions.npy'));
 writeNPY(laserOn, fullfile(serverRoot,'laserOnTimes.npy'));
 writeNPY(laserOff,fullfile(serverRoot,'laserOffTimes.npy'));
+writeNPY(expStartStop,fullfile(serverRoot,'expStartStop.npy'))
 
 [positions, ~, posLabels] = unique(galvoPos, 'rows');
 [powers, ~, powerLabels] = unique(laserPower);

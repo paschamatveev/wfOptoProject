@@ -4,6 +4,7 @@ import numpy as np
 import os
 from pathlib import Path
 import scipy
+import collections
 
 #import pytoolsAL as ptAL
 
@@ -12,7 +13,7 @@ class wfOpto:
     '''
     contains some functions for common operations with wf-opto data
     '''
-    def __init__(self, pathSubject, listExps=None):
+    def __init__(self, pathSubject):
         '''
         pathSubject - path to the experiments
         listExps - a list of lists. used if there are multiple experiments done in one session. 
@@ -23,36 +24,61 @@ class wfOpto:
         self.frameTimes = np.squeeze(np.load(self.timeFile))[::2] # every other frame - we want blue only
         self.svdTemp = np.load(serverPath / 'corr/svdTemporalComponents_corr.npy')
         self.svdSpat = np.load(serverPath / 'blue/svdSpatialComponents.npy')
-        self.svdSpatFull = self.svdSpat[:,:,:50]
-        self.svdTemp=self.svdTemp[:,:50]
+        self.svdSpat = self.svdSpat[:,:,:50]
+        self.svdTemp = self.svdTemp[:,:50]
         
+        self.expStartStop = np.load(serverPath / 'expStartStop.npy')
         self.meanImage = np.load(serverPath / 'blue/meanImage.npy')
         self.laserOn = np.squeeze(np.load(serverPath / 'laserOnTimes.npy'))
         self.laserOff = np.squeeze(np.load(serverPath / 'laserOffTimes.npy'))
         self.laserPowers = np.squeeze(np.load(serverPath /'laserPowers.npy'))
         self.galvoX = np.squeeze(np.load(serverPath/'galvoXPositions.npy'))
         self.galvoY = np.squeeze(np.load(serverPath/'galvoYPositions.npy'))
-        self.px, self.py, self.ncomps = self.svdSpatFull.shape
+        self.px, self.py, self.ncomps = self.svdSpat.shape
         
-        self.svdSpat = self.svdSpatFull.reshape(self.px*self.py, self.ncomps)
+        self.svdSpat = self.svdSpat.reshape(self.px*self.py, self.ncomps)
         if len(self.frameTimes) != len(self.svdTemp):
             length = min([len(self.frameTimes), len(self.svdTemp)])
             self.tToWf = scipy.interpolate.interp1d(self.frameTimes[:length], self.svdTemp[:length], axis=0, fill_value='extrapolate')
         else:
             self.tToWf = scipy.interpolate.interp1d(self.frameTimes, self.svdTemp, axis=0, fill_value='extrapolate')
-        self.spatial = self.svdSpatFull.reshape(560*560,-1)
-        if listExps == None:
-            listExps = np.array([np.arange(len(self.laserPowers))])
-        self.listExps = listExps
+        self.spatial = self.svdSpat.reshape(560*560,-1)
         self.pulseLengths = []
         for count,time in enumerate(self.laserOff):
             length = self.laserOff[count]-self.laserOn[count]
             length = round(length,2)
             self.pulseLengths.append(length)
         self.pulseLengths = np.array(self.pulseLengths)
+    def getExp(self,ca_en, en):
+        """
+        ca_en - master folder 
+        en - experiment folder that you wish to reference
+        the following are loaded in from a dataset
+            expStartStop = np.load(expdir / 'expStartStopTimes.npy')
+            gx = np.squeeze(np.load(expdir / 'galvoXPositions.npy'))
+            gy = np.squeeze(np.load(expdir / 'galvoYPositions.npy'))
+            laserAmp = np.squeeze(np.load(expdir / 'laserPowers.npy'))
+            laserOnTimes = np.squeeze(np.load(expdir / 'laserOnTimes.npy'))
+            laserOffTimes = np.squeeze(np.load(expdir / 'laserOffTimes.npy'))
+        returns the galvo X positions, galvoY positions, laser amplitude, 
+            laser on times, laser off times for a given experiment
+        use thisExp object by calling in this way: thisExp.galvoX or thisExp.laserOn, etc 
+        """
+        this_en = en - ca_en - 1 # find the folder that you want. folders are bumped up, so must subtract the master (ca_en) and 1
+        start, stop = self.expStartStop[this_en] # get the start and stop times of the experiment
+        e1 = np.squeeze(np.argwhere(self.laserOn > start)) # find the indices of the laserOnTimes that are greater than the start time
+        e2 = np.squeeze(np.argwhere(self.laserOff < stop)) # find the indices of the laserOnTimes that are less than the stop time
+
+        these_entries = np.intersect1d(e1, e2) # find the indices that are in both e1 and e2
+        exp = collections.namedtuple('experiment', ['galvoX', 'galvoY', 'laserPowers', 'laserOn', 'laserOff']) # create a named tuple
+        thisExp = exp(self.galvoX[these_entries], self.galvoY[these_entries], self.laserPowers[these_entries], 
+                    self.laserOn[these_entries], self.laserOff[these_entries])
+        return thisExp
     def tToWFManual(self, time):
         self.trial_activity = self.tToWf(time)
         return self.trial_activity
+
+    # everything below is archaic. none of this is used.
     def oneTrial(self, start, stop, step, trial=0, exp=0):
         '''
         creates video for a single trial

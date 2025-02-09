@@ -10,8 +10,8 @@ addpath(genpath(fullfile(githubDir , 'Pipelines'))) % steinmetzlab/Pipelines
 addpath(genpath(fullfile(githubDir, 'npy-matlab'))) % kwikteam/npy-matlab
 % addpath(genpath(fullfile(githubDir, 'wheelAnalysis'))) % cortex-lab/wheelAnalysis
 
-mn = 'AL_0035'; 
-td = '2025-01-08';
+mn = 'ZYE_0088'; 
+td = '2024-08-23';
 ca_en = 1; % widefield
 
 serverRoot = expPath(mn, td, ca_en);
@@ -65,6 +65,15 @@ writeNPY(expStartStop,fullfile(serverRoot,'expStartStop.npy'))
    
 % write cam
 writeNPY(flipsUp, fullfile(serverRoot, 'cameraFrameTimes.npy'));
+
+%% just add expstartstop
+
+expTimes = readNPY(fullfile(serverRoot, 'expStartStop.timestamps_Timeline.npy'));
+expStartStop = readNPY(fullfile(serverRoot, 'expStartStop.raw.npy'));
+[times,expStart,expEnd] = schmittTimes(t,expStartStop,[.5 .5]); %i think these are in seconds?
+expStartStop = reshape(times,[length(times)/2,2]); % reshapes into a x,2 array, x being the number of exps
+writeNPY(expStartStop,fullfile(serverRoot,'expStartStop.npy'))
+
 
 %% process - saves all to one folder, and depends on you hard-coding what experiments are 40hz and which are not
 
